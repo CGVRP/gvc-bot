@@ -27,7 +27,7 @@ module.exports = {
 
     await interaction.deferReply({ flags: 64 });
 
-    // 🔍 Fetch recent messages
+    // 🔍 Fetch recent messages to locate release & startup reference points
     const recentMessages = await interaction.channel.messages.fetch({
       limit: 100,
     });
@@ -59,11 +59,12 @@ module.exports = {
     );
     const reinvitesCount = reinvitesMessages.size;
 
-    // 🧹 Delete all non-pinned bot messages
+    // 🧹 Delete non-pinned bot messages up to the Startup Message
     let deletedCount = 0;
     let lastMessageId = null;
+    let stopDeleting = false;
 
-    while (true) {
+    while (!stopDeleting) {
       const fetched = await interaction.channel.messages.fetch({
         limit: 100,
         before: lastMessageId || undefined,
@@ -71,14 +72,24 @@ module.exports = {
 
       if (fetched.size === 0) break;
 
-      const deletable = fetched.filter((m) => m.author.bot && !m.pinned);
+      for (const msg of fetched.values()) {
+        // Check if this message is the Startup message (or Release message fallback)
+        const isStartup = msg.embeds[0]?.title?.includes("Session Startup");
+        const isRelease = msg.id === releaseMessage.id;
 
-      for (const msg of deletable.values()) {
-        try {
-          await msg.delete();
-          deletedCount++;
-        } catch (err) {
-          if (err.code !== 10008) console.log("[DEBUG] Failed to delete:", err);
+        if (isStartup || isRelease) {
+          stopDeleting = true;
+          break; // Stop iterating over further messages
+        }
+
+        // Only delete bot messages that are not pinned
+        if (msg.author.bot && !msg.pinned) {
+          try {
+            await msg.delete();
+            deletedCount++;
+          } catch (err) {
+            if (err.code !== 10008) console.log("[DEBUG] Failed to delete:", err);
+          }
         }
       }
 
@@ -113,10 +124,10 @@ module.exports = {
     });
 
     await interaction.editReply({
-      content: `Session summary sent successfully.\n🧹 Deleted **${deletedCount}** bot messages (excluding pinned).`,
+      content: `Session summary sent successfully.\n🧹 Deleted **${deletedCount}** bot messages up to the startup message.`,
     });
 
-    // ⭐ SESSION LOGGING (ONLY HERE)
+    // ⭐ SESSION LOGGING
     const sessionLogChannel = interaction.guild.channels.cache.get(
       "1362152050183635055",
     );
