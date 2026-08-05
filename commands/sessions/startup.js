@@ -35,11 +35,11 @@ module.exports = {
     const { embed, files } = embedTemplate({
       title: "<a:gvcsunspin:1527220557890850846> Greenville Community - *__Session Startup__* <a:gvcsunspin:1527220557890850846>",
       description:
-        `> <:arrowright:1534182706836144158> ${host} is hosting a session. If you wish to join, please react below. Make sure you have read all the information and rules  in <#1481953494519775254>.\n\n` +
+        `> <:arrowright:1534182706836144158> ${host} is hosting a session. If you wish to join, please react below. Make sure you have read all the information and rules  in <#1058639853937492132>.\n\n` +
         `**Startup Information**\n` +
-        `> <:bulletpoint:1534184707900837961> If the reaction requirement is not met within 20 minutes, the session will be cancelled.\n` +
-        `> <:bulletpoint:1534184707900837961> Reacting but not joining the session will result in moderation.\n\n` +
-        `> <:bulletpoint:1534184707900837961> For this session to commence, **${reactionsNeeded}** reactions are required.`,
+        `> <:arrowright:1534182706836144158> If the reaction requirement is not met within 20 minutes, the session will be cancelled.\n` +
+        `> <:arrowright:1534182706836144158> Reacting but not joining the session will result in moderation.\n\n` +
+        `> <:arrowright:1534182706836144158> For this session to commence, **${reactionsNeeded}** reactions are required.`,
       banner: path.join(__dirname, "../../graphics/gvcstartup.png"),
     });
 
