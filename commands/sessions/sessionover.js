@@ -138,7 +138,7 @@ module.exports = {
 
       const { embed: logEmbed } = embedTemplate({
         title:
-          "<:shines:1524097104547680276> Session Logged <:shines:1524097104547680276>",
+          "<a:gvcsunspin:1527220557890850846> Session Logged <a:gvcsunspin:1527220557890850846>",
         description:
           `> <:arrowright:1534182706836144158> **Host:** ${host} (${host.id})\n` +
           `> <:arrowright:1534182706836144158> **Channel:** ${interaction.channel} (${interaction.channel.id})\n` +

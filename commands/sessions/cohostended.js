@@ -20,7 +20,7 @@ module.exports = {
       `> <:arrowright:1534182706836144158> ${host} has ended their co-host’s duties for this session. Thank you for assisting!`;
 
     const { embed } = embedTemplate({
-      title: "<a:gvcsunspin:1527220557890850846> Greenville Community - *__Co-host Ended* <a:gvcsunspin:1527220557890850846>",
+      title: "<a:gvcsunspin:1527220557890850846> Greenville Community - *__Co-host Ended__* <a:gvcsunspin:1527220557890850846>",
       description
     });
 

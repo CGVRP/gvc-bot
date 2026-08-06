@@ -4,6 +4,7 @@ const app = express();
 
 app.get("/", (req, res) => res.send("Bot is alive!"));
 app.listen(3000, () => console.log("Web server running on port 3000"));
+
 const {
   Client,
   GatewayIntentBits,
@@ -18,8 +19,8 @@ const embedTemplate = require("./utils/embedTemplate");
 // -----------------------------------------------------
 // LOGGING SETUP
 // -----------------------------------------------------
-const GENERAL_LOG_CHANNEL = "1482745496018616524"; // bot-logs
-const SESSION_LOG_CHANNEL = "1524362111575134298"; // session-logs
+const GENERAL_LOG_CHANNEL = "1534886183040188547"; // Updated bot-logs channel
+const SESSION_LOG_CHANNEL = "1534886183040188547"; // session-logs
 
 function logEvent(
   client,
@@ -88,7 +89,6 @@ for (const folder of commandFolders) {
   }
 }
 
-
 // -----------------------------------------------------
 // READY EVENT
 // -----------------------------------------------------
@@ -101,18 +101,35 @@ client.once(Events.ClientReady, () => {
 // -----------------------------------------------------
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
+    // 🌐 GLOBAL LOGGING FOR ALL INTERACTION TYPES
+    let logTitle = "<a:gvcsunspin:1527220557890850846> Interaction Used <a:gvcsunspin:1527220557890850846>";
+    let extraDetails = "";
+
+    if (interaction.isChatInputCommand()) {
+      logTitle = "<a:gvcsunspin:1527220557890850846> Command Used <a:gvcsunspin:1527220557890850846>";
+      extraDetails = `> <:arrowright:1534182706836144158> **Command:** /${interaction.commandName}`;
+    } else if (interaction.isButton()) {
+      logTitle = "<a:gvcsunspin:1527220557890850846> Button Clicked <a:gvcsunspin:1527220557890850846>";
+      extraDetails = `> <:arrowright:1534182706836144158> **Button ID:** ${interaction.customId}`;
+    } else if (interaction.isAnySelectMenu()) {
+      logTitle = "<a:gvcsunspin:1527220557890850846> Menu Selected <a:gvcsunspin:1527220557890850846>";
+      extraDetails = `> <:arrowright:1534182706836144158> **Menu ID:** ${interaction.customId}\n` +
+                     `> <:arrowright:1534182706836144158> **Values:** ${interaction.values.join(", ")}`;
+    } else if (interaction.isModalSubmit()) {
+      logTitle = "<a:gvcsunspin:1527220557890850846> Modal Submitted <a:gvcsunspin:1527220557890850846>";
+      extraDetails = `> <:arrowright:1534182706836144158> **Modal ID:** ${interaction.customId}`;
+    } else if (interaction.isContextMenuCommand()) {
+      logTitle = "<a:gvcsunspin:1527220557890850846> Context Menu Used <a:gvcsunspin:1527220557890850846>";
+      extraDetails = `> <:arrowright:1534182706836144158> **Context Command:** ${interaction.commandName}`;
+    }
+
+    // Dispatch log immediately for every interaction type
+    logEvent(client, GENERAL_LOG_CHANNEL, logTitle, interaction, extraDetails);
+
     // -----------------------------------------------------
-    // 🔹 Slash commands → BOT LOGS
+    // 🔹 EXECUTE SLASH COMMANDS
     // -----------------------------------------------------
     if (interaction.isChatInputCommand()) {
-      logEvent(
-        client,
-        GENERAL_LOG_CHANNEL,
-        "<a:gvcsunspin:1527220557890850846> Command Used <a:gvcsunspin:1527220557890850846>",
-        interaction,
-        `> <:arrowright:1534182706836144158> **Command:** /${interaction.commandName}`,
-      );
-
       const command = client.commands.get(interaction.commandName);
       if (!command) return;
       await command.execute(interaction);
@@ -120,17 +137,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     // -----------------------------------------------------
-    // 🔹 STARTUP SYSTEM BUTTONS → BOT LOGS
+    // 🔹 STARTUP SYSTEM BUTTONS
     // -----------------------------------------------------
     if (interaction.isButton()) {
-      logEvent(
-        client,
-        GENERAL_LOG_CHANNEL,
-        "<a:gvcsunspin:1527220557890850846> Button Clicked <a:gvcsunspin:1527220557890850846>",
-        interaction,
-        `> <:arrowright:1534182706836144158> **Button ID:** ${interaction.customId}`,
-      );
-
       if (interaction.customId === "claim_ticket") return;
 
       const messages = await interaction.channel.messages.fetch({ limit: 50 });
@@ -184,15 +193,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
           linkLabel = "Link";
       }
 
-      // ⭐ SESSION BUTTONS → STILL BOT LOGS (NOT session logs)
-      logEvent(
-        client,
-        GENERAL_LOG_CHANNEL,
-        "<a:gvcsunspin:1527220557890850846> Session Button Used <a:gvcsunspin:1527220557890850846>",
-        interaction,
-        `> <:arrowright:1534182706836144158> **Action:** ${interaction.customId}`,
-      );
-
       const { embed } = embedTemplate({
         title: `<a:gvcsunspin:1527220557890850846> ${linkLabel} <a:gvcsunspin:1527220557890850846>`,
         description: `> <:arrowright:1534182706836144158> Here is your ${linkLabel.toLowerCase()}:\n${link}`,
@@ -207,8 +207,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     console.error("Interaction error:", error);
 
     const { embed } = embedTemplate({
-      title:
-        "⚠️ Error ⚠️",
+      title: "⚠️ Error ⚠️",
       description:
         "> <:arrowright:1534182706836144158> There was an error executing this interaction.",
     });
