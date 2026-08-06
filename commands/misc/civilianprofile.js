@@ -49,22 +49,6 @@ module.exports = {
       incomeBreakdown = "> <:arrowright:1534182706836144158> No income roles.";
     }
 
-    // VEHICLE PREVIEW (first 3)
-    let vehiclePreview = "";
-
-    if (vehicles.length === 0) {
-      vehiclePreview =
-        "> <:arrowright:1534182706836144158> No registered vehicles.";
-    } else {
-      vehicles.slice(0, 3).forEach((v) => {
-        vehiclePreview += `> • **${v.year} ${v.make} ${v.model}** (${v.color}) — Plate: ${v.plate}\n`;
-      });
-
-      if (vehicles.length > 3) {
-        vehiclePreview += `> …and **${vehicles.length - 3} more**`;
-      }
-    }
-
     // BADGES
     const badges = [];
     if (cash >= 100000) badges.push("💰 High Roller");
@@ -97,8 +81,6 @@ module.exports = {
 
     desc += `> <:arrowright:1534182706836144158> **Role Income:**\n${incomeBreakdown}\n`;
     desc += `> <:arrowright:1534182706836144158> **Total Role Income:** $${totalRoleIncome}\n\n`;
-
-    desc += `> <:arrowright:1534182706836144158> **Registered Vehicles:** ${vehicles.length}\n${vehiclePreview}\n\n`;
 
     desc += `> <:arrowright:1534182706836144158> **Badges:**\n${badgeDisplay}\n\n`;
 
