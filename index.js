@@ -20,7 +20,7 @@ const {
 const fs = require("node:fs");
 const path = require("node:path");
 const embedTemplate = require("./utils/embedTemplate");
-const { getUserRecord } = require("./economy/economyutils");
+const { getUserRecord, updateUserRecord } = require("./economy/economyutils");
 
 // -----------------------------------------------------
 // CONFIGURATION SETUP
