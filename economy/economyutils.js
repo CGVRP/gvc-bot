@@ -19,7 +19,11 @@ async function getDB() {
       await client.connect();
       console.log("✅ MongoDB connected");
     }
-    return client.db("GVC-Economy"); // your actual DB name
+
+    // ✅ Connect to the correct database
+    const db = client.db("GVC-Economy");
+    console.log("📂 Using database: GVC-Economy");
+    return db;
   } catch (err) {
     console.error("❌ MongoDB connection failed:", err);
     throw err;
@@ -31,7 +35,8 @@ async function getDB() {
 // -----------------------------------------------------
 async function loadEconomy() {
   const db = await getDB();
-  return await db.collection("users").find().toArray();
+  console.log("📥 Loading all user records...");
+  return await db.collection("economy.users").find().toArray();
 }
 
 // -----------------------------------------------------
@@ -40,14 +45,11 @@ async function loadEconomy() {
 async function loadRoleIncome() {
   try {
     const db = await getDB();
-    const collection = db.collection("roleIncome");
+    const collection = db.collection("economy.roleIncome"); // ✅ correct folder path
 
     console.log("📥 Fetching roleIncome document...");
 
-    const doc = await collection.findOne({
-      _id: new ObjectId("6a74b2d8f97d6e278a3444e1"),
-    });
-
+    const doc = await collection.findOne({});
     if (!doc) {
       console.log("⚠️ roleIncome document not found!");
       return {};
@@ -67,14 +69,16 @@ async function loadRoleIncome() {
 async function loadWorkMessages() {
   try {
     const db = await getDB();
-    const doc = await db.collection("workMessages").findOne({});
+    const collection = db.collection("economy.workMessages"); // ✅ correct folder path
 
+    console.log("📥 Fetching workMessages document...");
+    const doc = await collection.findOne({});
     if (!doc || !doc.data) {
       console.log("⚠️ No workMessages found in DB!");
       return [];
     }
 
-    console.log("📄 Loaded workMessages:", doc.data.length);
+    console.log(`📄 Loaded ${doc.data.length} workMessages`);
     return doc.data;
   } catch (err) {
     console.error("❌ Error loading workMessages:", err);
@@ -87,12 +91,13 @@ async function loadWorkMessages() {
 // -----------------------------------------------------
 async function getUserRecord(userId) {
   const db = await getDB();
-  let user = await db.collection("users").findOne({ userId });
+  const collection = db.collection("economy.users"); // ✅ correct folder path
 
+  let user = await collection.findOne({ userId });
   if (!user) {
     console.log(`🆕 Creating new user record for ${userId}`);
     user = { userId, cash: 0, lastCollect: 0, lastWork: 0 };
-    await db.collection("users").insertOne(user);
+    await collection.insertOne(user);
   }
 
   return user;
@@ -103,11 +108,19 @@ async function getUserRecord(userId) {
 // -----------------------------------------------------
 async function updateUserRecord(user) {
   const db = await getDB();
-  await db
-    .collection("users")
-    .updateOne({ userId: user.userId }, { $set: user }, { upsert: true });
+  const collection = db.collection("economy.users"); // ✅ correct folder path
+
+  await collection.updateOne(
+    { userId: user.userId },
+    { $set: user },
+    { upsert: true },
+  );
+  console.log(`💾 Updated user record for ${user.userId}`);
 }
 
+// -----------------------------------------------------
+// EXPORTS
+// -----------------------------------------------------
 module.exports = {
   loadEconomy,
   loadRoleIncome,
