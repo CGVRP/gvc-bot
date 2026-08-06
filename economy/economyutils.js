@@ -1,4 +1,4 @@
-const { MongoClient } = require("mongodb");
+const { MongoClient, ObjectId } = require("mongodb");
 require("dotenv").config();
 
 // MongoDB connection URI from .env
@@ -13,39 +13,84 @@ const client = new MongoClient(uri, {
 
 // Reuse connection across calls
 async function getDB() {
-  if (!client.topology || !client.topology.isConnected()) {
-    await client.connect();
+  try {
+    if (!client.topology || !client.topology.isConnected()) {
+      console.log("🔌 Connecting to MongoDB...");
+      await client.connect();
+      console.log("✅ MongoDB connected");
+    }
+    return client.db("GVC-Economy"); // your actual DB name
+  } catch (err) {
+    console.error("❌ MongoDB connection failed:", err);
+    throw err;
   }
-  return client.db("GVC-Economy"); // your actual DB name
 }
 
-// Load all users (for leaderboard, economyinfo)
+// -----------------------------------------------------
+// LOAD ALL USERS
+// -----------------------------------------------------
 async function loadEconomy() {
   const db = await getDB();
   return await db.collection("users").find().toArray();
 }
 
-// Load role income (for /collect)
+// -----------------------------------------------------
+// LOAD ROLE INCOME (FIXED + DEBUG)
+// -----------------------------------------------------
 async function loadRoleIncome() {
-  const db = await getDB(); // FIXED
-  const collection = db.collection("roleIncome");
-  const doc = await collection.findOne({});
-  return doc?.data || {}; // FIXED
+  try {
+    const db = await getDB();
+    const collection = db.collection("roleIncome");
+
+    console.log("📥 Fetching roleIncome document...");
+
+    const doc = await collection.findOne({
+      _id: new ObjectId("6a74b2d8f97d6e278a3444e1"),
+    });
+
+    if (!doc) {
+      console.log("⚠️ roleIncome document not found!");
+      return {};
+    }
+
+    console.log("📄 roleIncome loaded:", doc.data);
+    return doc.data || {};
+  } catch (err) {
+    console.error("❌ Error loading roleIncome:", err);
+    return {};
+  }
 }
 
-// Load work messages
+// -----------------------------------------------------
+// LOAD WORK MESSAGES (FIXED + DEBUG)
+// -----------------------------------------------------
 async function loadWorkMessages() {
-  const db = await getDB();
-  const doc = await db.collection("workMessages").findOne({});
-  return doc?.data || [];
+  try {
+    const db = await getDB();
+    const doc = await db.collection("workMessages").findOne({});
+
+    if (!doc || !doc.data) {
+      console.log("⚠️ No workMessages found in DB!");
+      return [];
+    }
+
+    console.log("📄 Loaded workMessages:", doc.data.length);
+    return doc.data;
+  } catch (err) {
+    console.error("❌ Error loading workMessages:", err);
+    return [];
+  }
 }
 
-// Get or create a user record
+// -----------------------------------------------------
+// GET OR CREATE USER RECORD
+// -----------------------------------------------------
 async function getUserRecord(userId) {
   const db = await getDB();
   let user = await db.collection("users").findOne({ userId });
 
   if (!user) {
+    console.log(`🆕 Creating new user record for ${userId}`);
     user = { userId, cash: 0, lastCollect: 0, lastWork: 0 };
     await db.collection("users").insertOne(user);
   }
@@ -53,7 +98,9 @@ async function getUserRecord(userId) {
   return user;
 }
 
-// Update a user record
+// -----------------------------------------------------
+// UPDATE USER RECORD
+// -----------------------------------------------------
 async function updateUserRecord(user) {
   const db = await getDB();
   await db
