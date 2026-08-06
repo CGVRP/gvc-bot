@@ -1,17 +1,14 @@
 const { MongoClient } = require("mongodb");
 require("dotenv").config();
 
-// MongoDB connection URI from .env
 const uri = process.env.MONGO_URI;
 
-// Create client with TLS options for Render compatibility
 const client = new MongoClient(uri, {
   ssl: true,
   tlsAllowInvalidCertificates: false,
   serverSelectionTimeoutMS: 5000,
 });
 
-// Reuse connection across calls
 async function getDB() {
   try {
     if (!client.topology || !client.topology.isConnected()) {
@@ -20,9 +17,9 @@ async function getDB() {
       console.log("✅ MongoDB connected");
     }
 
-    // ✅ Connect to the correct database
-    const db = client.db("GVC-Economy");
-    console.log("📂 Using database: GVC-Economy");
+    // ✅ Connect directly to the economy database
+    const db = client.db("economy");
+    console.log("📂 Using database: economy");
     return db;
   } catch (err) {
     console.error("❌ MongoDB connection failed:", err);
@@ -36,16 +33,16 @@ async function getDB() {
 async function loadEconomy() {
   const db = await getDB();
   console.log("📥 Loading all user records...");
-  return await db.collection("economy.users").find().toArray();
+  return await db.collection("users").find().toArray();
 }
 
 // -----------------------------------------------------
-// LOAD ROLE INCOME (FIXED + DEBUG)
+// LOAD ROLE INCOME
 // -----------------------------------------------------
 async function loadRoleIncome() {
   try {
     const db = await getDB();
-    const collection = db.collection("economy.roleIncome"); // ✅ correct folder path
+    const collection = db.collection("roleIncome");
 
     console.log("📥 Fetching roleIncome document...");
     const doc = await collection.findOne({});
@@ -63,12 +60,12 @@ async function loadRoleIncome() {
 }
 
 // -----------------------------------------------------
-// LOAD WORK MESSAGES (FIXED + DEBUG)
+// LOAD WORK MESSAGES
 // -----------------------------------------------------
 async function loadWorkMessages() {
   try {
     const db = await getDB();
-    const collection = db.collection("economy.workMessages"); // ✅ correct folder path
+    const collection = db.collection("workMessages");
 
     console.log("📥 Fetching workMessages document...");
     const doc = await collection.findOne({});
@@ -90,7 +87,7 @@ async function loadWorkMessages() {
 // -----------------------------------------------------
 async function getUserRecord(userId) {
   const db = await getDB();
-  const collection = db.collection("economy.users"); // ✅ correct folder path
+  const collection = db.collection("users");
 
   let user = await collection.findOne({ userId });
   if (!user) {
@@ -107,19 +104,16 @@ async function getUserRecord(userId) {
 // -----------------------------------------------------
 async function updateUserRecord(user) {
   const db = await getDB();
-  const collection = db.collection("economy.users"); // ✅ correct folder path
+  const collection = db.collection("users");
 
   await collection.updateOne(
     { userId: user.userId },
     { $set: user },
-    { upsert: true },
+    { upsert: true }
   );
   console.log(`💾 Updated user record for ${user.userId}`);
 }
 
-// -----------------------------------------------------
-// EXPORTS
-// -----------------------------------------------------
 module.exports = {
   loadEconomy,
   loadRoleIncome,
