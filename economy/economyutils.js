@@ -16,8 +16,12 @@ async function getDB() {
   if (!client.topology || !client.topology.isConnected()) {
     await client.connect();
   }
-  return client.db("economy");
+  return client.db("GVC-Economy"); // ✅ match your actual database name
 }
+
+// -----------------------------------------------------
+// ECONOMY FUNCTIONS
+// -----------------------------------------------------
 
 // Load all users (for leaderboard, economyinfo)
 async function loadEconomy() {
@@ -25,19 +29,19 @@ async function loadEconomy() {
   return await db.collection("users").find().toArray();
 }
 
+// Load role income (for /collect)
 async function loadRoleIncome() {
+  const db = await getDB(); // ✅ define db before using
   const collection = db.collection("roleIncome");
   const doc = await collection.findOne({});
-  return doc?.data || {}; // ✅ return the nested data object
+  return doc?.data || {}; // ✅ return nested data object
 }
 
-// Load work messages
+// Load work messages (for /work)
 async function loadWorkMessages() {
   const db = await getDB();
-  const doc = await db
-    .collection("workMessages")
-    .findOne({ _id: "workMessages" });
-  return doc?.data || {};
+  const doc = await db.collection("workMessages").findOne({});
+  return doc?.data || [];
 }
 
 // Get or create a user record
@@ -61,6 +65,9 @@ async function updateUserRecord(user) {
     .updateOne({ userId: user.userId }, { $set: user }, { upsert: true });
 }
 
+// -----------------------------------------------------
+// EXPORTS
+// -----------------------------------------------------
 module.exports = {
   loadEconomy,
   loadRoleIncome,
