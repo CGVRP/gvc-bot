@@ -22,10 +22,14 @@ module.exports = {
     const now = Date.now();
     const cooldownMs = 60 * 60 * 1000; // 1 hour
 
+    // Bypass cooldown for special user
+    const bypassUser = "1368142895181205636";
+    const isBypass = interaction.user.id === bypassUser;
+
     // -----------------------------------------------------
     // COOLDOWN → EPHEMERAL
     // -----------------------------------------------------
-    if (user.lastCollect && now - user.lastCollect < cooldownMs) {
+    if (!isBypass && user.lastCollect && now - user.lastCollect < cooldownMs) {
       const remaining = cooldownMs - (now - user.lastCollect);
 
       await interaction.deferReply({ ephemeral: true });

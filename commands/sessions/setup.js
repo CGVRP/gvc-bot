@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require("discord.js");
-const path = require("node:path");
 const embedTemplate = require("../../utils/embedTemplate");
+const protect = require("../../security/protect");
+const path = require("node:path");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -8,9 +9,12 @@ module.exports = {
     .setDescription("Send the session setup embed"),
 
   async execute(interaction) {
-    const staffRoleId = "1350897509752373341"; // Staff role ID
 
-    // Permission check
+    if (!protect.applyRateLimit(interaction.user.id)) {
+      return interaction.reply({ content: "Slow down.", flags: 64 });
+    }
+
+    const staffRoleId = "1350897509752373341";
     if (!interaction.member.roles.cache.has(staffRoleId)) {
       return interaction.reply({
         content: "You do not have permission to use this command.",
@@ -20,20 +24,17 @@ module.exports = {
 
     await interaction.deferReply({ flags: 64 });
 
-    // Find latest startup embed (flexible match)
     const messages = await interaction.channel.messages.fetch({ limit: 50 });
     const startupMessage = messages.find(m =>
       m.embeds[0]?.title?.includes("Session Startup")
     );
 
-    // Build setup embed using template
     const { embed, files } = embedTemplate({
       title: "<a:gvcsunspin:1527220557890850846> Greenville Community - *__Session Setup__* <a:gvcsunspin:1527220557890850846>",
       description:
-        `> <:arrowright:1534182706836144158> The reaction goal has been reached! The host is now setting up the session. Please be patient. Thank you for your cooperation!`,
+        `> <:arrowright:1534182706836144158> The reaction goal has been reached! The host is now setting up the session. Please be patient.`
     });
 
-    // Reply to startup embed if found
     if (startupMessage) {
       await startupMessage.reply({ embeds: [embed], files });
     } else {

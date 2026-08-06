@@ -28,6 +28,9 @@ const GENERAL_LOG_CHANNEL = "1534886183040188547"; // Bot logs channel ID
 const SESSION_LOG_CHANNEL = "1534889791416438784"; // Session logs channel ID
 const HR_ROLE_ID = "1350582607217430650"; // HR Role ID to ping
 
+const protect = require("./security/protect");
+protect.enableGlobalProtection();
+
 // Helper function to create/resend recovered log embeds
 function createRecoveredEmbed(originalEmbed, executor, timestamp) {
   const recoveredEmbed = { ...originalEmbed.data };

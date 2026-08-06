@@ -2,48 +2,53 @@ const {
   SlashCommandBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
 } = require("discord.js");
 const path = require("node:path");
 const embedTemplate = require("../../utils/embedTemplate");
+const protect = require("../../security/protect");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("reinvites")
     .setDescription("Send the reinvites embed")
-    .addStringOption(option =>
+    .addStringOption((option) =>
       option
         .setName("link")
         .setDescription("Session link (e.g., https://discord.gg/yourlink)")
-        .setRequired(true)
+        .setRequired(true),
     ),
 
   async execute(interaction) {
-    const staffRoleId = "1350897509752373341"; // Staff role
+    // Anti-spam
+    if (!protect.applyRateLimit(interaction.user.id)) {
+      return interaction.reply({ content: "Slow down.", flags: 64 });
+    }
 
-    // Permission check
+    // Staff-only
+    const staffRoleId = "1350897509752373341";
     if (!interaction.member.roles.cache.has(staffRoleId)) {
       return interaction.reply({
         content: "You do not have permission to use this command.",
-        flags: 64
+        flags: 64,
       });
     }
 
-    // 🔍 Find the latest startup embed
+    // Find startup embed
     const messages = await interaction.channel.messages.fetch({ limit: 50 });
-    const startupMessage = messages.find(m =>
-      m.embeds[0]?.title?.includes("Session Startup")
+    const startupMessage = messages.find((m) =>
+      m.embeds[0]?.title?.includes("Session Startup"),
     );
 
     if (!startupMessage) {
       return interaction.reply({
         content: "Startup embed not found. You must start a session first.",
-        flags: 64
+        flags: 64,
       });
     }
 
-    // 🔗 Process reinvites normally
-    let link = interaction.options.getString("link");
+    // Sanitize link
+    let link = protect.sanitize(interaction.options.getString("link"));
     const host = interaction.user;
 
     if (!link.startsWith("http://") && !link.startsWith("https://")) {
@@ -53,26 +58,25 @@ module.exports = {
     await interaction.deferReply({ flags: 64 });
 
     const description =
-      `> <:arrowright:1534182706836144158> ${host} is hosting reinvites for their session.\n` +
+      `> <:arrowright:1534182706836144158> ${host} is hosting reinvites.\n` +
       `> <:arrowright:1534182706836144158> Click the button below to receive the reinvite link privately.`;
 
     const { embed, files } = embedTemplate({
-      title: "<a:gvcsunspin:1527220557890850846> Greenville Community - *__Reinvites__* <a:gvcsunspin:1527220557890850846>",
+      title:
+        "<a:gvcsunspin:1527220557890850846> Greenville Community - *__Reinvites__* <a:gvcsunspin:1527220557890850846>",
       description,
-      banner: path.join(__dirname, "../../graphics/gvcreinvites.png")
+      banner: path.join(__dirname, "../../graphics/gvcreinvites.png"),
     });
 
-    // ⭐ Button to reveal the reinvite link privately
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("reinvites_link")
         .setLabel("Get Reinvite Link")
-        .setStyle(ButtonStyle.Success)
+        .setStyle(ButtonStyle.Success),
     );
 
-    // 🔍 Find release embed to reply to
-    const releaseMessage = messages.find(m =>
-      m.embeds[0]?.title?.includes("Session Release")
+    const releaseMessage = messages.find((m) =>
+      m.embeds[0]?.title?.includes("Session Release"),
     );
 
     let sent;
@@ -82,21 +86,23 @@ module.exports = {
         content: "@here",
         embeds: [embed],
         files,
-        components: [row]
+        components: [row],
+        allowedMentions: { parse: ["everyone", "roles"] },
       });
     } else {
       sent = await interaction.channel.send({
         content: "@here",
         embeds: [embed],
         files,
-        components: [row]
+        components: [row],
+        allowedMentions: { parse: ["everyone", "roles"] },
       });
     }
 
     sent.sessionLink = link;
 
     await interaction.editReply({
-      content: "Reinvites embed sent successfully."
+      content: "Reinvites embed sent successfully.",
     });
-  }
+  },
 };

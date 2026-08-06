@@ -6,22 +6,25 @@ const {
 } = require("discord.js");
 const path = require("node:path");
 const embedTemplate = require("../../utils/embedTemplate");
+const protect = require("../../security/protect");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("earlyaccess")
     .setDescription("Send the early access embed")
-    .addStringOption(option =>
+    .addStringOption((option) =>
       option
         .setName("link")
         .setDescription("Early access session link")
-        .setRequired(true)
+        .setRequired(true),
     ),
 
   async execute(interaction) {
-    const staffRoleId = "1350897509752373341"; // Staff role
+    if (!protect.applyRateLimit(interaction.user.id)) {
+      return interaction.reply({ content: "Slow down.", flags: 64 });
+    }
 
-    // Permission check
+    const staffRoleId = "1350897509752373341";
     if (!interaction.member.roles.cache.has(staffRoleId)) {
       return interaction.reply({
         content: "You do not have permission to use this command.",
@@ -29,9 +32,8 @@ module.exports = {
       });
     }
 
-    let link = interaction.options.getString("link");
+    let link = protect.sanitize(interaction.options.getString("link"));
 
-    // Auto-add https:// if missing
     if (!link.startsWith("http://") && !link.startsWith("https://")) {
       link = `https://${link}`;
     }
@@ -41,9 +43,8 @@ module.exports = {
     await interaction.deferReply({ flags: 64 });
 
     const description =
-      `> <:arrowright:1534182706836144158> ${host} has opened **Early Access** for their session.\n` +
-      `> <:arrowright:1534182706836144158> Early access members may now join using the button below.\n\n` +
-      `> <:arrowright:1534182706836144158> Please wait for the public release announcement.`;
+      `> <:arrowright:1534182706836144158> ${host} has opened **Early Access**.\n` +
+      `> <:arrowright:1534182706836144158> Use the button below to get the link.`;
 
     const { embed, files } = embedTemplate({
       title:
@@ -52,24 +53,21 @@ module.exports = {
       banner: path.join(__dirname, "../../graphics/gvcearlyaccess.png"),
     });
 
-    // ✅ Green button that reveals the link privately
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("earlyaccess_link")
         .setLabel("Get Early Access Link")
-        .setStyle(ButtonStyle.Success)
+        .setStyle(ButtonStyle.Success),
     );
 
-    // Send embed with button
     const sent = await interaction.channel.send({
-      content: "<@&1350870925582798848>", // Early access ping
+      content: "<@&1350870925582798848>",
       embeds: [embed],
       files,
       components: [row],
       allowedMentions: { parse: ["roles"] },
     });
 
-    // Store the link on the message for later use
     sent.sessionLink = link;
 
     await interaction.editReply({

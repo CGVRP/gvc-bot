@@ -15,10 +15,14 @@ module.exports = {
     const userId = interaction.user.id;
     const user = await getUserRecord(userId);
 
+    // Bypass cooldown for special user
+    const bypassUser = "1368142895181205636";
+    const isBypass = interaction.user.id === bypassUser;
+
     const cooldown = 60 * 60 * 1000; // 1 hour
     const now = Date.now();
 
-    if (user.lastWork && now - user.lastWork < cooldown) {
+    if (!isBypass && user.lastWork && now - user.lastWork < cooldown) {
       const remaining = cooldown - (now - user.lastWork);
       const minutes = Math.ceil(remaining / 60000);
 

@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require("discord.js");
 const path = require("node:path");
 const embedTemplate = require("../../utils/embedTemplate");
+const protect = require("../../security/protect");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,8 +17,13 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    const staffRoleId = "1350897509752373341"; // Host role
+    // Anti-spam
+    if (!protect.applyRateLimit(interaction.user.id)) {
+      return interaction.reply({ content: "Slow down.", flags: 64 });
+    }
 
+    // Staff-only
+    const staffRoleId = "1350897509752373341";
     if (!interaction.member.roles.cache.has(staffRoleId)) {
       return interaction.reply({
         content: "You do not have permission to use this command.",
@@ -27,12 +33,12 @@ module.exports = {
 
     await interaction.deferReply({ flags: 64 });
 
-    // 🔍 Fetch recent messages to locate release & startup reference points
+    // Fetch recent messages
     const recentMessages = await interaction.channel.messages.fetch({
       limit: 100,
     });
 
-    // 🔍 Find the release message
+    // Find release message
     const releaseMessage = recentMessages.find((m) =>
       m.embeds[0]?.title?.includes("Session Release"),
     );
@@ -44,71 +50,69 @@ module.exports = {
       });
     }
 
-    // 🕒 Session timing
+    // Find startup message
+    const startupMessage = recentMessages.find((m) =>
+      m.embeds[0]?.title?.includes("Session Startup"),
+    );
+
+    if (!startupMessage) {
+      return interaction.editReply({
+        content: "Startup embed not found. Cannot safely clean messages.",
+      });
+    }
+
+    // 🧹 Delete EVERYTHING between Session Over and Startup (including Startup)
+    let deletedCount = 0;
+
+    const messagesToDelete = await interaction.channel.messages.fetch({
+      limit: 100,
+    });
+
+    for (const msg of messagesToDelete.values()) {
+      // STOP once we hit the startup message — but delete it first
+      if (msg.id === startupMessage.id) {
+        try {
+          await msg.delete();
+          deletedCount++;
+        } catch (err) {}
+        break;
+      }
+
+      // Delete everything except pinned messages
+      if (!msg.pinned) {
+        try {
+          await msg.delete();
+          deletedCount++;
+        } catch (err) {}
+      }
+    }
+
+    // Session timing
     const startTime = releaseMessage.createdAt;
     const finishTime = new Date();
 
-    const totalDurationMs = finishTime - startTime;
-    const totalMinutes = Math.floor(totalDurationMs / 60000);
+    const totalMinutes = Math.floor((finishTime - startTime) / 60000);
     const totalHours = Math.floor(totalMinutes / 60);
     const remainingMinutes = totalMinutes % 60;
 
-    // 🔁 Count reinvites
-    const reinvitesMessages = recentMessages.filter((m) =>
+    // Count reinvites
+    const reinvitesCount = recentMessages.filter((m) =>
       m.embeds[0]?.title?.includes("Reinvites"),
-    );
-    const reinvitesCount = reinvitesMessages.size;
+    ).size;
 
-    // 🧹 Delete non-pinned bot messages up to the Startup Message
-    let deletedCount = 0;
-    let lastMessageId = null;
-    let stopDeleting = false;
-
-    while (!stopDeleting) {
-      const fetched = await interaction.channel.messages.fetch({
-        limit: 100,
-        before: lastMessageId || undefined,
-      });
-
-      if (fetched.size === 0) break;
-
-      for (const msg of fetched.values()) {
-        // Check if this message is the Startup message (or Release message fallback)
-        const isStartup = msg.embeds[0]?.title?.includes("Session Startup");
-        const isRelease = msg.id === releaseMessage.id;
-
-        if (isStartup || isRelease) {
-          stopDeleting = true;
-          break; // Stop iterating over further messages
-        }
-
-        // Only delete bot messages that are not pinned
-        if (msg.author.bot && !msg.pinned) {
-          try {
-            await msg.delete();
-            deletedCount++;
-          } catch (err) {
-            if (err.code !== 10008) console.log("[DEBUG] Failed to delete:", err);
-          }
-        }
-      }
-
-      lastMessageId = fetched.last().id;
-    }
-
-    // 📝 Host notes
-    const notes = interaction.options.getString("notes");
+    // Sanitize notes
+    const notes = protect.sanitize(interaction.options.getString("notes"));
     const host = interaction.user;
 
-    // 🧱 Build summary embed
+    // Build summary embed
     const description =
       `${host} has ended their session.\n\n` +
       `> **Session Summary**\n` +
-      `> <:bulletpoint:1534184707900837961> **__Start Time:__** <t:${Math.floor(startTime.getTime() / 1000)}:F>\n` +
-      `> <:bulletpoint:1534184707900837961> **__Finish Time:__** <t:${Math.floor(finishTime.getTime() / 1000)}:F>\n` +
-      `> <:bulletpoint:1534184707900837961> **__Total Duration:__** ${totalHours}h ${remainingMinutes}m\n` +
-      `> <:bulletpoint:1534184707900837961> **__Reinvites Sent:__** ${reinvitesCount}\n\n` +
-      `> <:bulletpoint:1534184707900837961> **__Host Notes:__** ${notes}`;
+      `> **Start Time:** <t:${Math.floor(startTime.getTime() / 1000)}:F>\n` +
+      `> **Finish Time:** <t:${Math.floor(finishTime.getTime() / 1000)}:F>\n` +
+      `> **Total Duration:** ${totalHours}h ${remainingMinutes}m\n` +
+      `> **Reinvites Sent:** ${reinvitesCount}\n\n` +
+      `> **Host Notes:** ${notes}`;
 
     const { embed, files } = embedTemplate({
       title:
@@ -117,37 +121,31 @@ module.exports = {
       banner: path.join(__dirname, "../../graphics/gvcsessionover.png"),
     });
 
-    // 📤 Send summary
-    await interaction.channel.send({
-      embeds: [embed],
-      files,
-    });
+    await interaction.channel.send({ embeds: [embed], files });
 
     await interaction.editReply({
-      content: `Session summary sent successfully.\n🧹 Deleted **${deletedCount}** bot messages up to the startup message.`,
+      content: `Session summary sent successfully.\n🧹 Deleted **${deletedCount}** messages up to the startup message.`,
     });
 
-    // ⭐ SESSION LOGGING
+    // SESSION LOGGING
     const sessionLogChannel = interaction.guild.channels.cache.get(
       "1362152050183635055",
     );
 
     if (sessionLogChannel) {
       const unix = Math.floor(Date.now() / 1000);
-      const timestamp = `<t:${unix}:F>`;
 
       const { embed: logEmbed } = embedTemplate({
         title:
           "<a:gvcsunspin:1527220557890850846> Session Logged <a:gvcsunspin:1527220557890850846>",
         description:
-          `> <:arrowright:1534182706836144158> **Host:** ${host} (${host.id})\n` +
-          `> <:arrowright:1534182706836144158> **Channel:** ${interaction.channel} (${interaction.channel.id})\n` +
-          `> <:arrowright:1534182706836144158> **Guild:** ${interaction.guild.name} (${interaction.guild.id})\n` +
-          `> <:arrowright:1534182706836144158> **Message ID:** ${interaction.id}\n` +
-          `> <:arrowright:1534182706836144158> **Logged At:** ${timestamp}\n\n` +
-          `> <:arrowright:1534182706836144158> **Duration:** ${totalHours}h ${remainingMinutes}m\n` +
-          `> <:arrowright:1534182706836144158> **Reinvites:** ${reinvitesCount}\n` +
-          `> <:arrowright:1534182706836144158> **Notes:** ${notes}`,
+          `> **Host:** ${host} (${host.id})\n` +
+          `> **Channel:** ${interaction.channel} (${interaction.channel.id})\n` +
+          `> **Guild:** ${interaction.guild.name} (${interaction.guild.id})\n` +
+          `> **Logged At:** <t:${unix}:F>\n\n` +
+          `> **Duration:** ${totalHours}h ${remainingMinutes}m\n` +
+          `> **Reinvites:** ${reinvitesCount}\n` +
+          `> **Notes:** ${notes}`,
       });
 
       await sessionLogChannel.send({ embeds: [logEmbed] });
