@@ -15,9 +15,9 @@ module.exports = {
     const userId = interaction.user.id;
     const user = await getUserRecord(userId);
 
-    // Bypass cooldown for special user
-    const bypassUser = "1368142895181205636";
-    const isBypass = interaction.user.id === bypassUser;
+    // Bypass cooldown using ROLE
+    const bypassRole = "1368142895181205636";
+    const isBypass = interaction.member.roles.cache.has(bypassRole);
 
     const cooldown = 60 * 60 * 1000; // 1 hour
     const now = Date.now();
@@ -26,9 +26,10 @@ module.exports = {
       const remaining = cooldown - (now - user.lastWork);
       const minutes = Math.ceil(remaining / 60000);
 
-      const { embed, files } = embedTemplate({
+      const { embed } = embedTemplate({
         title: "⏳ Cooldown Active",
         description: `You must wait **${minutes} minutes** before working again.`,
+        noLogo: true,
       });
 
       return interaction.reply({ embeds: [embed], ephemeral: true });
@@ -48,12 +49,12 @@ module.exports = {
 
     await updateUserRecord(user);
 
-    const { embed, files } = embedTemplate({
+    const { embed } = embedTemplate({
       title: "💼 Work Complete",
       description: `${message}\n\n**New Balance:** $${user.cash}`,
+      noLogo: true,
     });
 
-    // Optional: add thumbnail
     embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
 
     return interaction.reply({ embeds: [embed] });

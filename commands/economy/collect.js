@@ -22,30 +22,26 @@ module.exports = {
     const now = Date.now();
     const cooldownMs = 60 * 60 * 1000; // 1 hour
 
-    // Bypass cooldown for special user
-    const bypassUser = "1368142895181205636";
-    const isBypass = interaction.user.id === bypassUser;
+    // Bypass cooldown using ROLE
+    const bypassRole = "1368142895181205636";
+    const isBypass = interaction.member.roles.cache.has(bypassRole);
 
-    // -----------------------------------------------------
     // COOLDOWN → EPHEMERAL
-    // -----------------------------------------------------
     if (!isBypass && user.lastCollect && now - user.lastCollect < cooldownMs) {
       const remaining = cooldownMs - (now - user.lastCollect);
 
       await interaction.deferReply({ ephemeral: true });
 
-      const { embed, files } = embedTemplate({
+      const { embed } = embedTemplate({
         title: "⏳ Cooldown Active",
         description: `You already collected.\nTry again <t:${Math.floor((now + remaining) / 1000)}:R>.`,
-        // No color → uses DEFAULT_COLOR (0xFFAD65)
+        noLogo: true,
       });
 
       return interaction.editReply({ embeds: [embed] });
     }
 
-    // -----------------------------------------------------
     // CALCULATE INCOME
-    // -----------------------------------------------------
     let totalIncome = 0;
     const earnedFrom = [];
 
@@ -56,9 +52,7 @@ module.exports = {
       }
     }
 
-    // -----------------------------------------------------
     // NO INCOME ROLES → EPHEMERAL
-    // -----------------------------------------------------
     if (totalIncome === 0) {
       await interaction.deferReply({ ephemeral: true });
       return interaction.editReply({
@@ -66,9 +60,7 @@ module.exports = {
       });
     }
 
-    // -----------------------------------------------------
     // SUCCESSFUL COLLECT → PUBLIC
-    // -----------------------------------------------------
     await interaction.deferReply();
 
     user.cash = (user.cash ?? 0) + totalIncome;
@@ -86,14 +78,13 @@ module.exports = {
       desc += `> • ${roleName}: $${entry.amount}\n`;
     }
 
-    const { embed, files } = embedTemplate({
+    const { embed } = embedTemplate({
       title:
         "<a:gvcsunspin:1527220557890850846> Income Collected <a:gvcsunspin:1527220557890850846>",
       description: desc,
-      // No color → uses DEFAULT_COLOR (0xFFAD65)
+      noLogo: true,
     });
 
-    // Add avatar thumbnail properly
     embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
 
     return interaction.editReply({ embeds: [embed] });
