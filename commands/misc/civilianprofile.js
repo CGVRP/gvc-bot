@@ -27,6 +27,7 @@ module.exports = {
     const workMessages = await loadWorkMessages();
 
     const cash = user.cash ?? 0;
+    const bank = user.bank ?? 0;
     const lastCollect = user.lastCollect ?? 0;
     const lastWork = user.lastWork ?? 0;
     const vehicles = user.vehicles ?? [];
@@ -78,7 +79,8 @@ module.exports = {
     // DESCRIPTION
     let desc = "";
 
-    desc += `> <:arrowright:1534182706836144158> **Balance:** $${cash}\n`;
+    desc += `> <:arrowright:1534182706836144158> **Cash:** $${cash}\n`;
+    desc += `> <:arrowright:1534182706836144158> **Bank:** $${bank}\n`;
     desc += `> <:arrowright:1534182706836144158> **Last Collected:** ${
       lastCollect ? `<t:${Math.floor(lastCollect / 1000)}:R>` : "Never"
     }\n`;
@@ -109,12 +111,17 @@ module.exports = {
 
     embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
 
-    // BUTTON: View All Vehicles
+    // BUTTONS: View All Vehicles + View Balance
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`viewVehicles_${userId}`)
         .setLabel("View All Vehicles")
         .setStyle(ButtonStyle.Primary),
+
+      new ButtonBuilder()
+        .setCustomId(`viewBalance_${userId}`)
+        .setLabel("View Balance")
+        .setStyle(ButtonStyle.Secondary),
     );
 
     return interaction.editReply({ embeds: [embed], components: [row] });

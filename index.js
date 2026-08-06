@@ -202,6 +202,35 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     // -----------------------------
+    // VIEW BALANCE BUTTON
+    // -----------------------------
+    if (interaction.customId.startsWith("viewBalance_")) {
+      const userId = interaction.customId.split("_")[1];
+      const user = await getUserRecord(userId);
+
+      const cash = user.cash ?? 0;
+      const bank = user.bank ?? 0;
+
+      const desc =
+        `> <:arrowright:1534182706836144158> **Cash:** $${cash.toLocaleString()}\n` +
+        `> <:arrowright:1534182706836144158> **Bank:** $${bank.toLocaleString()}`;
+
+      const { embed } = embedTemplate({
+        title:
+          "<a:gvcsunspin:1527220557890850846> Balance Overview <a:gvcsunspin:1527220557890850846>",
+        description: desc,
+        noLogo: true,
+      });
+
+      embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
+
+      return interaction.reply({
+        embeds: [embed],
+        flags: 64, // ephemeral
+      });
+    }
+
+    // -----------------------------
     // EXISTING BUTTON LOGIC (SESSION LINKS)
     // -----------------------------
     if (interaction.isButton()) {

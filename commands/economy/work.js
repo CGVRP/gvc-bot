@@ -6,6 +6,19 @@ const {
 } = require("../../economy/economyutils");
 const embedTemplate = require("../../utils/embedTemplate");
 
+// Weighted random payout function
+function getWorkPayout() {
+  const roll = Math.random();
+
+  if (roll > 0.995) return 5000; // 0.5% chance
+  if (roll > 0.97) return 2500; // 3% chance
+  if (roll > 0.9) return 1500; // 10% chance
+  if (roll > 0.7) return 800; // 20% chance
+
+  // Common payout: 100–500
+  return Math.floor(Math.random() * 400) + 100;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("work")
@@ -40,18 +53,23 @@ module.exports = {
     const message =
       workMessages[Math.floor(Math.random() * workMessages.length)];
 
-    // Extract pay from message
-    const payMatch = message.match(/\$(\d+)/);
-    const pay = payMatch ? parseInt(payMatch[1]) : 0;
+    // NEW: Random payout instead of extracting from message
+    const payout = getWorkPayout();
 
-    user.cash += pay;
+    user.cash += payout;
     user.lastWork = now;
 
     await updateUserRecord(user);
 
+    const desc =
+      `> <:arrowright:1534182706836144158> ${message}\n` +
+      `> <:arrowright:1534182706836144158> You earned **$${payout.toLocaleString()}**!\n\n` +
+      `> <:arrowright:1534182706836144158> **New Balance:** $${user.cash.toLocaleString()}`;
+
     const { embed } = embedTemplate({
-      title: "💼 Work Complete",
-      description: `${message}\n\n**New Balance:** $${user.cash}`,
+      title:
+        "<a:gvcsunspin:1527220557890850846> Work Complete <a:gvcsunspin:1527220557890850846>",
+      description: desc,
       noLogo: true,
     });
 

@@ -5,7 +5,7 @@ const { getUserRecord } = require("../../economy/economyutils");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("balance")
-    .setDescription("Check your current cash balance."),
+    .setDescription("Check your current cash and bank balance."),
 
   async execute(interaction) {
     await interaction.deferReply();
@@ -14,10 +14,12 @@ module.exports = {
     const user = await getUserRecord(userId);
 
     const cash = user.cash ?? 0;
+    const bank = user.bank ?? 0;
     const lastCollect = user.lastCollect ?? 0;
 
     const desc =
-      `> <:arrowright:1534182706836144158> **Current Balance:** $${cash}\n` +
+      `> <:arrowright:1534182706836144158> **Cash:** $${cash.toLocaleString()}\n` +
+      `> <:arrowright:1534182706836144158> **Bank:** $${bank.toLocaleString()}\n` +
       `> <:arrowright:1534182706836144158> **Last Collected:** ${
         lastCollect
           ? `<t:${Math.floor(lastCollect / 1000)}:R>`

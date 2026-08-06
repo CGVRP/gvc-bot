@@ -82,7 +82,7 @@ module.exports = {
     try {
       const { embed: dmEmbed } = embedTemplate({
         title:
-          "<:shines:1524097104547680276> Money Received <:shines:1524097104547680276>",
+          "<a:gvcsunspin:1527220557890850846> Money Received <a:gvcsunspin:1527220557890850846>",
         description:
           `> <:bulletpoint:1524621721318195230> **From:** ${hrMember.user.username} (HR)\n` +
           `> <:bulletpoint:1524621721318195230> **Amount:** $${amount}\n` +
