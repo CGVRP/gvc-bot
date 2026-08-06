@@ -19,8 +19,8 @@ const embedTemplate = require("./utils/embedTemplate");
 // -----------------------------------------------------
 // LOGGING SETUP
 // -----------------------------------------------------
-const GENERAL_LOG_CHANNEL = "1534886183040188547"; // Updated bot-logs channel
-const SESSION_LOG_CHANNEL = "1534886183040188547"; // session-logs
+const GENERAL_LOG_CHANNEL = "1534886183040188547"; // Bot logs channel ID
+const SESSION_LOG_CHANNEL = "1524362111575134298"; // Session logs channel ID
 
 function logEvent(
   client,
@@ -101,20 +101,35 @@ client.once(Events.ClientReady, () => {
 // -----------------------------------------------------
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
-    // 🌐 GLOBAL LOGGING FOR ALL INTERACTION TYPES
     let logTitle = "<a:gvcsunspin:1527220557890850846> Interaction Used <a:gvcsunspin:1527220557890850846>";
     let extraDetails = "";
 
     if (interaction.isChatInputCommand()) {
       logTitle = "<a:gvcsunspin:1527220557890850846> Command Used <a:gvcsunspin:1527220557890850846>";
-      extraDetails = `> <:arrowright:1534182706836144158> **Command:** /${interaction.commandName}`;
+      
+      // 🛠️ Dynamic Option Parser: Formats options based on option type
+      const optionsFormatted = interaction.options.data
+        .map((opt) => {
+          let val = opt.value;
+          if (opt.user) val = `${opt.user} (${opt.user.id})`;
+          else if (opt.channel) val = `${opt.channel} (${opt.channel.id})`;
+          else if (opt.role) val = `${opt.role} (${opt.role.id})`;
+          return `> <:arrowright:1534182706836144158> **${opt.name}:** ${val}`;
+        })
+        .join("\n");
+
+      extraDetails =
+        `> <:arrowright:1534182706836144158> **Command:** /${interaction.commandName}\n` +
+        (optionsFormatted ? `${optionsFormatted}\n` : "");
+
     } else if (interaction.isButton()) {
       logTitle = "<a:gvcsunspin:1527220557890850846> Button Clicked <a:gvcsunspin:1527220557890850846>";
       extraDetails = `> <:arrowright:1534182706836144158> **Button ID:** ${interaction.customId}`;
     } else if (interaction.isAnySelectMenu()) {
       logTitle = "<a:gvcsunspin:1527220557890850846> Menu Selected <a:gvcsunspin:1527220557890850846>";
-      extraDetails = `> <:arrowright:1534182706836144158> **Menu ID:** ${interaction.customId}\n` +
-                     `> <:arrowright:1534182706836144158> **Values:** ${interaction.values.join(", ")}`;
+      extraDetails =
+        `> <:arrowright:1534182706836144158> **Menu ID:** ${interaction.customId}\n` +
+        `> <:arrowright:1534182706836144158> **Values:** ${interaction.values.join(", ")}`;
     } else if (interaction.isModalSubmit()) {
       logTitle = "<a:gvcsunspin:1527220557890850846> Modal Submitted <a:gvcsunspin:1527220557890850846>";
       extraDetails = `> <:arrowright:1534182706836144158> **Modal ID:** ${interaction.customId}`;
@@ -123,7 +138,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       extraDetails = `> <:arrowright:1534182706836144158> **Context Command:** ${interaction.commandName}`;
     }
 
-    // Dispatch log immediately for every interaction type
+    // Send log to channel
     logEvent(client, GENERAL_LOG_CHANNEL, logTitle, interaction, extraDetails);
 
     // -----------------------------------------------------
