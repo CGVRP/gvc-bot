@@ -2,20 +2,24 @@ const { EmbedBuilder, AttachmentBuilder } = require("discord.js");
 const path = require("node:path");
 
 // Default GVRE brand color
-const DEFAULT_COLOR = 0xFFAD65;
+const DEFAULT_COLOR = 0xffad65;
 
 // Default logo path (inside graphics folder)
 const DEFAULT_LOGO = path.join(__dirname, "..", "graphics", "GVClogo.png");
 
 // -----------------------------------------------------
-// UNIVERSAL EMBED TEMPLATE
+// UNIVERSAL EMBED TEMPLATE (supports noLogo)
 // -----------------------------------------------------
-function embedTemplate({ title, description, banner, color }) {
+function embedTemplate({ title, description, banner, color, noLogo = false }) {
   const files = [];
-  let logoName = path.basename(DEFAULT_LOGO);
+  let logoName = null;
   let bannerName = null;
 
-  files.push(new AttachmentBuilder(DEFAULT_LOGO).setName(logoName));
+  // Attach logo ONLY if noLogo is false
+  if (!noLogo) {
+    logoName = path.basename(DEFAULT_LOGO);
+    files.push(new AttachmentBuilder(DEFAULT_LOGO).setName(logoName));
+  }
 
   // Optional banner
   if (banner) {
@@ -27,9 +31,14 @@ function embedTemplate({ title, description, banner, color }) {
   const embed = new EmbedBuilder()
     .setColor(color || DEFAULT_COLOR)
     .setTitle(title || "GVC Bot")
-    .setDescription(description || "No description provided.")
-    .setThumbnail(`attachment://${logoName}`);
+    .setDescription(description || "No description provided.");
 
+  // Add thumbnail only if logo is attached
+  if (logoName) {
+    embed.setThumbnail(`attachment://${logoName}`);
+  }
+
+  // Add banner image if provided
   if (bannerName) {
     embed.setImage(`attachment://${bannerName}`);
   }

@@ -25,11 +25,10 @@ async function loadEconomy() {
   return await db.collection("users").find().toArray();
 }
 
-// Load role income data
 async function loadRoleIncome() {
-  const db = await getDB();
-  const doc = await db.collection("roleIncome").findOne({ _id: "roleIncome" });
-  return doc?.data || {};
+  const collection = db.collection("roleIncome");
+  const doc = await collection.findOne({});
+  return doc?.data || {}; // ✅ return the nested data object
 }
 
 // Load work messages

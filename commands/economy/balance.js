@@ -24,19 +24,17 @@ module.exports = {
           : "Never collected"
       }`;
 
-    // Build base embed using your template (brand color auto-applied)
-    const { embed, files } = embedTemplate({
+    const { embed } = embedTemplate({
       title:
         "<a:gvcsunspin:1527220557890850846> Your Balance <a:gvcsunspin:1527220557890850846>",
-      description: desc
+      description: desc,
+      noLogo: true,
     });
 
-    // Add user avatar thumbnail
     embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
 
     await interaction.editReply({
       embeds: [embed],
-      files,
     });
   },
 };
