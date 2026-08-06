@@ -176,28 +176,150 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    // -----------------------------
-    // VEHICLE BUTTONS (VIEW + PAGINATION)
-    // -----------------------------
+    // RECORDS BUTTON HANDLER
     if (interaction.isButton()) {
-      if (interaction.customId.startsWith("viewVehicles_")) {
+      if (interaction.customId.startsWith("viewRecords_")) {
         const userId = interaction.customId.split("_")[1];
-        const user = await getUserRecord(userId);
-        const vehicles = user.vehicles ?? [];
+        const userRecord = await getUserRecord(userId);
 
-        await sendVehiclePage(interaction, vehicles, 0);
-        return;
+        if (!userRecord.records) {
+          userRecord.records = { citations: [], warrants: [], blackpoints: 0 };
+        }
+
+        const { citations, warrants, blackpoints } = userRecord.records;
+
+        let desc = "";
+
+        // Blackpoints
+        desc += `> <:arrowright:1534182706836144158> **Blackpoints:** ${blackpoints}\n\n`;
+
+        // Citations
+        desc += `> <:arrowright:1534182706836144158> **Citations:**\n`;
+        if (citations.length === 0) {
+          desc += "> • None\n\n";
+        } else {
+          for (const c of citations) {
+            desc += `> • **${c.case}** — ${c.violation} — $${c.price}\n`;
+          }
+          desc += "\n";
+        }
+
+        // Warrants
+        desc += `> <:arrowright:1534182706836144158> **Warrants:**\n`;
+        if (warrants.length === 0) {
+          desc += "> • None\n\n";
+        } else {
+          for (const w of warrants) {
+            desc += `> • ⚠️ **${w.case}** — ${w.offense}\n`;
+          }
+          desc += "\n";
+        }
+
+        // Build select menu ONLY for citations
+        const options = citations.map((c) => ({
+          label: `${c.case} — $${c.price}`,
+          description: `${c.violation} | ${c.offense}`,
+          value: c.case,
+        }));
+
+        const row =
+          options.length > 0
+            ? new ActionRowBuilder().addComponents(
+                new StringSelectMenuBuilder()
+                  .setCustomId("payfine_select")
+                  .setPlaceholder("Select a fine to pay")
+                  .addOptions(options),
+              )
+            : null;
+
+        const { embed } = embedTemplate({
+          title:
+            "<a:gvcsunspin:1527220557890850846> Your Records <a:gvcsunspin:1527220557890850846>",
+          description: desc,
+          noLogo: true,
+        });
+
+        embed.setThumbnail(
+          interaction.user.displayAvatarURL({ dynamic: true }),
+        );
+
+        return interaction.reply({
+          embeds: [embed],
+          components: row ? [row] : [],
+          ephemeral: true,
+        });
       }
+    }
 
-      if (interaction.customId.startsWith("vehPage_")) {
-        const [_, userId, pageStr] = interaction.customId.split("_");
-        const page = parseInt(pageStr, 10);
+    // PAYFINE SELECT MENU HANDLER
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === "payfine_select") {
+        // Prevent paying someone else's fines
+        const profileOwnerId =
+          interaction.message.interaction.customId.split("_")[1];
+        if (interaction.user.id !== profileOwnerId) {
+          return interaction.reply({
+            content: "❌ You can only pay your own fines.",
+            ephemeral: true,
+          });
+        }
 
-        const user = await getUserRecord(userId);
-        const vehicles = user.vehicles ?? [];
+        const caseNumber = interaction.values[0];
+        const userId = interaction.user.id;
 
-        await sendVehiclePage(interaction, vehicles, page);
-        return;
+        const userRecord = await getUserRecord(userId);
+        const citation = userRecord.records?.citations?.find(
+          (c) => c.case === caseNumber,
+        );
+
+        if (!citation) {
+          return interaction.reply({
+            content: "❌ Citation not found.",
+            ephemeral: true,
+          });
+        }
+
+        if (userRecord.cash < citation.price) {
+          return interaction.reply({
+            content: `❌ You need $${citation.price}, but you only have $${userRecord.cash}.`,
+            ephemeral: true,
+          });
+        }
+
+        // Deduct money + remove citation
+        userRecord.cash -= citation.price;
+        userRecord.records.citations = userRecord.records.citations.filter(
+          (c) => c.case !== caseNumber,
+        );
+
+        await updateUserRecord(userRecord);
+
+        const { embed } = embedTemplate({
+          title:
+            "<a:gvcsunspin:1527220557890850846> Fine Paid <a:gvcsunspin:1527220557890850846>",
+          description:
+            `> <:arrowright:1534182706836144158> **Case:** ${citation.case}\n` +
+            `> <:arrowright:1534182706836144158> **Violation:** ${citation.violation}\n` +
+            `> <:arrowright:1534182706836144158> **Offense:** ${citation.offense}\n` +
+            `> <:arrowright:1534182706836144158> **Amount Paid:** $${citation.price}\n\n` +
+            `> <:arrowright:1534182706836144158> **New Balance:** $${userRecord.cash}`,
+        });
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+
+        // DM user
+        try {
+          const { embed: dmEmbed } = embedTemplate({
+            title:
+              "<a:gvcsunspin:1527220557890850846> Fine Payment Receipt <a:gvcsunspin:1527220557890850846>",
+            description:
+              `> <:bulletpoint:1534184707900837961> **Case:** ${citation.case}\n` +
+              `> <:bulletpoint:1534184707900837961> **Amount Paid:** $${citation.price}\n` +
+              `> <:bulletpoint:1534184707900837961> **Remaining Balance:** $${userRecord.cash}`,
+          });
+
+          await interaction.user.send({ embeds: [dmEmbed] });
+        } catch {}
       }
     }
 

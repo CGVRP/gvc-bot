@@ -111,7 +111,6 @@ module.exports = {
 
     embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
 
-    // BUTTONS: View All Vehicles + View Balance
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`viewVehicles_${userId}`)
@@ -122,6 +121,11 @@ module.exports = {
         .setCustomId(`viewBalance_${userId}`)
         .setLabel("View Balance")
         .setStyle(ButtonStyle.Secondary),
+
+      new ButtonBuilder()
+        .setCustomId(`viewRecords_${userId}`)
+        .setLabel("Records")
+        .setStyle(ButtonStyle.Danger),
     );
 
     return interaction.editReply({ embeds: [embed], components: [row] });
