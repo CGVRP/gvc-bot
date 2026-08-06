@@ -12,10 +12,14 @@ const {
   Collection,
   Events,
   AuditLogEvent,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require("discord.js");
 const fs = require("node:fs");
 const path = require("node:path");
 const embedTemplate = require("./utils/embedTemplate");
+const { getUserRecord } = require("./economy/economyutils");
 
 // -----------------------------------------------------
 // CONFIGURATION SETUP
@@ -27,7 +31,7 @@ const HR_ROLE_ID = "1350582607217430650"; // HR Role ID to ping
 // Helper function to create/resend recovered log embeds
 function createRecoveredEmbed(originalEmbed, executor, timestamp) {
   const recoveredEmbed = { ...originalEmbed.data };
-  
+
   recoveredEmbed.color = parseInt("db2727", 16);
   recoveredEmbed.title = `<a:gvcsunspin:1527220557890850846> RECOVERED DELETED LOG BY ${executor.tag || executor.username} AT ${timestamp} <a:gvcsunspin:1527220557890850846>`;
 
@@ -113,12 +117,17 @@ client.once(Events.ClientReady, () => {
 // -----------------------------------------------------
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
-    let logTitle = "<a:gvcsunspin:1527220557890850846> Interaction Used <a:gvcsunspin:1527220557890850846>";
+    let logTitle =
+      "<a:gvcsunspin:1527220557890850846> Interaction Used <a:gvcsunspin:1527220557890850846>";
     let extraDetails = "";
 
+    // -----------------------------
+    // LOGGING
+    // -----------------------------
     if (interaction.isChatInputCommand()) {
-      logTitle = "<a:gvcsunspin:1527220557890850846> Command Used <a:gvcsunspin:1527220557890850846>";
-      
+      logTitle =
+        "<a:gvcsunspin:1527220557890850846> Command Used <a:gvcsunspin:1527220557890850846>";
+
       const optionsFormatted = interaction.options.data
         .map((opt) => {
           let val = opt.value;
@@ -132,25 +141,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
       extraDetails =
         `> <:arrowright:1534182706836144158> **Command:** /${interaction.commandName}\n` +
         (optionsFormatted ? `${optionsFormatted}\n` : "");
-
     } else if (interaction.isButton()) {
-      logTitle = "<a:gvcsunspin:1527220557890850846> Button Clicked <a:gvcsunspin:1527220557890850846>";
+      logTitle =
+        "<a:gvcsunspin:1527220557890850846> Button Clicked <a:gvcsunspin:1527220557890850846>";
       extraDetails = `> <:arrowright:1534182706836144158> **Button ID:** ${interaction.customId}`;
     } else if (interaction.isAnySelectMenu()) {
-      logTitle = "<a:gvcsunspin:1527220557890850846> Menu Selected <a:gvcsunspin:1527220557890850846>";
+      logTitle =
+        "<a:gvcsunspin:1527220557890850846> Menu Selected <a:gvcsunspin:1527220557890850846>";
       extraDetails =
         `> <:arrowright:1534182706836144158> **Menu ID:** ${interaction.customId}\n` +
         `> <:arrowright:1534182706836144158> **Values:** ${interaction.values.join(", ")}`;
     } else if (interaction.isModalSubmit()) {
-      logTitle = "<a:gvcsunspin:1527220557890850846> Modal Submitted <a:gvcsunspin:1527220557890850846>";
+      logTitle =
+        "<a:gvcsunspin:1527220557890850846> Modal Submitted <a:gvcsunspin:1527220557890850846>";
       extraDetails = `> <:arrowright:1534182706836144158> **Modal ID:** ${interaction.customId}`;
     } else if (interaction.isContextMenuCommand()) {
-      logTitle = "<a:gvcsunspin:1527220557890850846> Context Menu Used <a:gvcsunspin:1527220557890850846>";
+      logTitle =
+        "<a:gvcsunspin:1527220557890850846> Context Menu Used <a:gvcsunspin:1527220557890850846>";
       extraDetails = `> <:arrowright:1534182706836144158> **Context Command:** ${interaction.commandName}`;
     }
 
     logEvent(client, GENERAL_LOG_CHANNEL, logTitle, interaction, extraDetails);
 
+    // -----------------------------
+    // CHAT INPUT COMMANDS
+    // -----------------------------
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
       if (!command) return;
@@ -158,6 +173,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    // -----------------------------
+    // VEHICLE BUTTONS (VIEW + PAGINATION)
+    // -----------------------------
+    if (interaction.isButton()) {
+      if (interaction.customId.startsWith("viewVehicles_")) {
+        const userId = interaction.customId.split("_")[1];
+        const user = await getUserRecord(userId);
+        const vehicles = user.vehicles ?? [];
+
+        await sendVehiclePage(interaction, vehicles, 0);
+        return;
+      }
+
+      if (interaction.customId.startsWith("vehPage_")) {
+        const [_, userId, pageStr] = interaction.customId.split("_");
+        const page = parseInt(pageStr, 10);
+
+        const user = await getUserRecord(userId);
+        const vehicles = user.vehicles ?? [];
+
+        await sendVehiclePage(interaction, vehicles, page);
+        return;
+      }
+    }
+
+    // -----------------------------
+    // EXISTING BUTTON LOGIC (SESSION LINKS)
+    // -----------------------------
     if (interaction.isButton()) {
       if (interaction.customId === "claim_ticket") return;
 
@@ -240,10 +283,65 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 // -----------------------------------------------------
+// VEHICLE PAGE HELPER
+// -----------------------------------------------------
+async function sendVehiclePage(interaction, vehicles, page) {
+  const perPage = 5;
+  const totalPages = Math.max(1, Math.ceil(vehicles.length / perPage));
+
+  const start = page * perPage;
+  const end = start + perPage;
+
+  const pageVehicles = vehicles.slice(start, end);
+
+  let desc = "";
+
+  if (pageVehicles.length === 0) {
+    desc = "> <:arrowright:1534182706836144158> No vehicles on this page.";
+  } else {
+    pageVehicles.forEach((v) => {
+      desc += `> • **${v.year} ${v.make} ${v.model}** (${v.color}) — Plate: ${v.plate}\n`;
+    });
+  }
+
+  const { embed } = embedTemplate({
+    title: `🚗 Registered Vehicles (Page ${page + 1}/${totalPages})`,
+    description: desc,
+  });
+
+  embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
+
+  const row = new ActionRowBuilder();
+
+  if (page > 0) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`vehPage_${interaction.user.id}_${page - 1}`)
+        .setLabel("⬅ Previous")
+        .setStyle(ButtonStyle.Secondary),
+    );
+  }
+
+  if (page < totalPages - 1) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`vehPage_${interaction.user.id}_${page + 1}`)
+        .setLabel("Next ➡")
+        .setStyle(ButtonStyle.Secondary),
+    );
+  }
+
+  return interaction.reply({
+    embeds: [embed],
+    components: row.components.length ? [row] : [],
+    ephemeral: true,
+  });
+}
+
+// -----------------------------------------------------
 // 🚨 SINGLE MESSAGE DELETE PROTECTION
 // -----------------------------------------------------
 client.on(Events.MessageDelete, async (message) => {
-  // Only monitor the defined log channels & messages that were sent by the bot with embeds
   if (
     ![GENERAL_LOG_CHANNEL, SESSION_LOG_CHANNEL].includes(message.channelId) ||
     !message.author?.bot ||
@@ -256,7 +354,6 @@ client.on(Events.MessageDelete, async (message) => {
     const unix = Math.floor(Date.now() / 1000);
     const timestamp = `<t:${unix}:F>`;
 
-    // Fetch the audit log entry to find who deleted it
     const fetchedLogs = await message.guild.fetchAuditLogs({
       limit: 1,
       type: AuditLogEvent.MessageDelete,
@@ -264,11 +361,14 @@ client.on(Events.MessageDelete, async (message) => {
     const deletionLog = fetchedLogs.entries.first();
 
     let executor = { tag: "Unknown User", username: "Unknown User" };
-    if (deletionLog && deletionLog.target.id === message.author.id && deletionLog.createdTimestamp > Date.now() - 5000) {
+    if (
+      deletionLog &&
+      deletionLog.target.id === message.author.id &&
+      deletionLog.createdTimestamp > Date.now() - 5000
+    ) {
       executor = deletionLog.executor;
     }
 
-    // Build the recovered embeds with red color `#db2727`
     const recoveredEmbeds = message.embeds.map((embed) =>
       createRecoveredEmbed(embed, executor, timestamp),
     );
@@ -287,7 +387,10 @@ client.on(Events.MessageDelete, async (message) => {
 // -----------------------------------------------------
 client.on(Events.MessageDeleteBulk, async (messages) => {
   const firstMsg = messages.first();
-  if (!firstMsg || ![GENERAL_LOG_CHANNEL, SESSION_LOG_CHANNEL].includes(firstMsg.channelId)) {
+  if (
+    !firstMsg ||
+    ![GENERAL_LOG_CHANNEL, SESSION_LOG_CHANNEL].includes(firstMsg.channelId)
+  ) {
     return;
   }
 
@@ -295,7 +398,6 @@ client.on(Events.MessageDeleteBulk, async (messages) => {
     const unix = Math.floor(Date.now() / 1000);
     const timestamp = `<t:${unix}:F>`;
 
-    // Fetch audit log entry for bulk message purge
     const fetchedLogs = await firstMsg.guild.fetchAuditLogs({
       limit: 1,
       type: AuditLogEvent.MessageBulkDelete,
@@ -307,7 +409,6 @@ client.on(Events.MessageDeleteBulk, async (messages) => {
       executor = deletionLog.executor;
     }
 
-    // Filter only bot messages that contained embeds
     const botEmbedMessages = messages.filter(
       (m) => m.author?.bot && m.embeds.length > 0,
     );
