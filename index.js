@@ -252,6 +252,78 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
+    // PAYFINE SELECT MENU HANDLER
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === "payfine_select") {
+        // Defer reply to avoid timeout
+        await interaction.deferReply({ flags: 64 }); // ephemeral
+
+        // Safely get the profile owner ID
+        let profileOwnerId = null;
+        if (interaction.message.interaction?.customId) {
+          profileOwnerId =
+            interaction.message.interaction.customId.split("_")[1];
+        }
+
+        // Ownership check
+        if (profileOwnerId && interaction.user.id !== profileOwnerId) {
+          return interaction.editReply({
+            content: "❌ You can only pay your own fines.",
+          });
+        }
+
+        const caseNumber = interaction.values[0];
+        const userId = interaction.user.id;
+        const userRecord = await getUserRecord(userId);
+        const citation = userRecord.records?.citations?.find(
+          (c) => c.case === caseNumber,
+        );
+
+        if (!citation) {
+          return interaction.editReply({
+            content: "❌ Citation not found.",
+          });
+        }
+
+        // Normalize values
+        const cash = userRecord.cash ?? 0;
+
+        // CASH‑ONLY CHECK
+        if (cash < citation.price) {
+          return interaction.editReply({
+            content:
+              `❌ You don't have enough **cash** to pay this fine!\n\n` +
+              `> Required: **$${citation.price}**\n` +
+              `> You have: **$${cash}**\n\n` +
+              `Please withdraw from your bank first.`,
+          });
+        }
+
+        // Deduct ONLY from cash
+        userRecord.cash = cash - citation.price;
+
+        // Remove citation
+        userRecord.records.citations = userRecord.records.citations.filter(
+          (c) => c.case !== caseNumber,
+        );
+
+        await updateUserRecord(userRecord);
+
+        const { embed } = embedTemplate({
+          title:
+            "<a:gvcsunspin:1527220557890850846> Fine Paid <a:gvcsunspin:1527220557890850846>",
+          description:
+            `> <:arrowright:1534182706836144158> **Case:** ${citation.case}\n` +
+            `> <:arrowright:1534182706836144158> **Violation:** ${citation.violation}\n` +
+            `> <:arrowright:1534182706836144158> **Offense:** ${citation.offense}\n` +
+            `> <:arrowright:1534182706836144158> **Amount Paid:** $${citation.price}\n\n` +
+            `> <:arrowright:1534182706836144158> **New Cash Balance:** $${userRecord.cash}`,
+        });
+
+        await interaction.editReply({ embeds: [embed] });
+      }
+    }
+
     // -----------------------------
     // VIEW BALANCE BUTTON
     // -----------------------------
@@ -306,16 +378,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       if (!reacted) {
         const { embed } = embedTemplate({
-          title:
-            "<a:gvcsunspin:1527220557890850846> Access Denied <a:gvcsunspin:1527220557890850846>",
+          title: "... Access Denied ...",
           description:
-            "> <:arrowright:1534182706836144158> You must react to the **Startup Embed** before accessing the session link.",
+            "> You must react to the Startup Embed before accessing the session link.",
         });
 
-        return interaction.reply({
-          embeds: [embed],
-          flags: 64,
-        });
+        return interaction.reply({ embeds: [embed], flags: 64 });
       }
 
       const link = interaction.message.sessionLink || "Link unavailable.";
