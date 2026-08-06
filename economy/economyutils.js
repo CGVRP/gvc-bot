@@ -1,4 +1,4 @@
-const { MongoClient, ObjectId } = require("mongodb");
+const { MongoClient } = require("mongodb");
 require("dotenv").config();
 
 // MongoDB connection URI from .env
@@ -48,7 +48,6 @@ async function loadRoleIncome() {
     const collection = db.collection("economy.roleIncome"); // ✅ correct folder path
 
     console.log("📥 Fetching roleIncome document...");
-
     const doc = await collection.findOne({});
     if (!doc) {
       console.log("⚠️ roleIncome document not found!");
