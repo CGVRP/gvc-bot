@@ -11,16 +11,28 @@ const {
   Partials,
   Collection,
   Events,
+  AuditLogEvent,
 } = require("discord.js");
 const fs = require("node:fs");
 const path = require("node:path");
 const embedTemplate = require("./utils/embedTemplate");
 
 // -----------------------------------------------------
-// LOGGING SETUP
+// CONFIGURATION SETUP
 // -----------------------------------------------------
 const GENERAL_LOG_CHANNEL = "1534886183040188547"; // Bot logs channel ID
-const SESSION_LOG_CHANNEL = "1524362111575134298"; // Session logs channel ID
+const SESSION_LOG_CHANNEL = "1534889791416438784"; // Session logs channel ID
+const HR_ROLE_ID = "1350582607217430650"; // HR Role ID to ping
+
+// Helper function to create/resend recovered log embeds
+function createRecoveredEmbed(originalEmbed, executor, timestamp) {
+  const recoveredEmbed = { ...originalEmbed.data };
+  
+  recoveredEmbed.color = parseInt("db2727", 16);
+  recoveredEmbed.title = `<a:gvcsunspin:1527220557890850846> RECOVERED DELETED LOG BY ${executor.tag || executor.username} AT ${timestamp} <a:gvcsunspin:1527220557890850846>`;
+
+  return recoveredEmbed;
+}
 
 function logEvent(
   client,
@@ -107,7 +119,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand()) {
       logTitle = "<a:gvcsunspin:1527220557890850846> Command Used <a:gvcsunspin:1527220557890850846>";
       
-      // 🛠️ Dynamic Option Parser: Formats options based on option type
       const optionsFormatted = interaction.options.data
         .map((opt) => {
           let val = opt.value;
@@ -138,12 +149,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       extraDetails = `> <:arrowright:1534182706836144158> **Context Command:** ${interaction.commandName}`;
     }
 
-    // Send log to channel
     logEvent(client, GENERAL_LOG_CHANNEL, logTitle, interaction, extraDetails);
 
-    // -----------------------------------------------------
-    // 🔹 EXECUTE SLASH COMMANDS
-    // -----------------------------------------------------
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
       if (!command) return;
@@ -151,9 +158,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    // -----------------------------------------------------
-    // 🔹 STARTUP SYSTEM BUTTONS
-    // -----------------------------------------------------
     if (interaction.isButton()) {
       if (interaction.customId === "claim_ticket") return;
 
@@ -232,6 +236,94 @@ client.on(Events.InteractionCreate, async (interaction) => {
     } else {
       await interaction.reply({ embeds: [embed], flags: 64 });
     }
+  }
+});
+
+// -----------------------------------------------------
+// 🚨 SINGLE MESSAGE DELETE PROTECTION
+// -----------------------------------------------------
+client.on(Events.MessageDelete, async (message) => {
+  // Only monitor the defined log channels & messages that were sent by the bot with embeds
+  if (
+    ![GENERAL_LOG_CHANNEL, SESSION_LOG_CHANNEL].includes(message.channelId) ||
+    !message.author?.bot ||
+    !message.embeds.length
+  ) {
+    return;
+  }
+
+  try {
+    const unix = Math.floor(Date.now() / 1000);
+    const timestamp = `<t:${unix}:F>`;
+
+    // Fetch the audit log entry to find who deleted it
+    const fetchedLogs = await message.guild.fetchAuditLogs({
+      limit: 1,
+      type: AuditLogEvent.MessageDelete,
+    });
+    const deletionLog = fetchedLogs.entries.first();
+
+    let executor = { tag: "Unknown User", username: "Unknown User" };
+    if (deletionLog && deletionLog.target.id === message.author.id && deletionLog.createdTimestamp > Date.now() - 5000) {
+      executor = deletionLog.executor;
+    }
+
+    // Build the recovered embeds with red color `#db2727`
+    const recoveredEmbeds = message.embeds.map((embed) =>
+      createRecoveredEmbed(embed, executor, timestamp),
+    );
+
+    await message.channel.send({
+      content: `<@&${HR_ROLE_ID}>`,
+      embeds: recoveredEmbeds,
+    });
+  } catch (error) {
+    console.error("Failed to recover deleted log:", error);
+  }
+});
+
+// -----------------------------------------------------
+// 🚨 BULK MESSAGE DELETE PROTECTION
+// -----------------------------------------------------
+client.on(Events.MessageDeleteBulk, async (messages) => {
+  const firstMsg = messages.first();
+  if (!firstMsg || ![GENERAL_LOG_CHANNEL, SESSION_LOG_CHANNEL].includes(firstMsg.channelId)) {
+    return;
+  }
+
+  try {
+    const unix = Math.floor(Date.now() / 1000);
+    const timestamp = `<t:${unix}:F>`;
+
+    // Fetch audit log entry for bulk message purge
+    const fetchedLogs = await firstMsg.guild.fetchAuditLogs({
+      limit: 1,
+      type: AuditLogEvent.MessageBulkDelete,
+    });
+    const deletionLog = fetchedLogs.entries.first();
+
+    let executor = { tag: "Unknown User", username: "Unknown User" };
+    if (deletionLog && deletionLog.createdTimestamp > Date.now() - 5000) {
+      executor = deletionLog.executor;
+    }
+
+    // Filter only bot messages that contained embeds
+    const botEmbedMessages = messages.filter(
+      (m) => m.author?.bot && m.embeds.length > 0,
+    );
+
+    for (const msg of botEmbedMessages.values()) {
+      const recoveredEmbeds = msg.embeds.map((embed) =>
+        createRecoveredEmbed(embed, executor, timestamp),
+      );
+
+      await msg.channel.send({
+        content: `<@&${HR_ROLE_ID}>`,
+        embeds: recoveredEmbeds,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to recover bulk deleted logs:", error);
   }
 });
 
