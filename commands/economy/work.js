@@ -24,15 +24,16 @@ module.exports = {
 
       const { embed, files } = embedTemplate({
         title: "⏳ Cooldown Active",
-        description: `You must wait **${minutes} minutes** before working again.`
+        description: `You must wait **${minutes} minutes** before working again.`,
       });
 
-      return interaction.reply({ embeds: [embed], files, ephemeral: true });
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
     // Load messages from MongoDB
     const workMessages = await loadWorkMessages();
-    const message = workMessages[Math.floor(Math.random() * workMessages.length)];
+    const message =
+      workMessages[Math.floor(Math.random() * workMessages.length)];
 
     // Extract pay from message
     const payMatch = message.match(/\$(\d+)/);
@@ -45,12 +46,12 @@ module.exports = {
 
     const { embed, files } = embedTemplate({
       title: "💼 Work Complete",
-      description: `${message}\n\n**New Balance:** $${user.cash}`
+      description: `${message}\n\n**New Balance:** $${user.cash}`,
     });
 
     // Optional: add thumbnail
     embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
 
-    return interaction.reply({ embeds: [embed], files });
+    return interaction.reply({ embeds: [embed] });
   },
 };

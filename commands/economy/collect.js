@@ -32,11 +32,11 @@ module.exports = {
 
       const { embed, files } = embedTemplate({
         title: "⏳ Cooldown Active",
-        description: `You already collected.\nTry again <t:${Math.floor((now + remaining) / 1000)}:R>.`
+        description: `You already collected.\nTry again <t:${Math.floor((now + remaining) / 1000)}:R>.`,
         // No color → uses DEFAULT_COLOR (0xFFAD65)
       });
 
-      return interaction.editReply({ embeds: [embed], files });
+      return interaction.editReply({ embeds: [embed] });
     }
 
     // -----------------------------------------------------
@@ -85,13 +85,13 @@ module.exports = {
     const { embed, files } = embedTemplate({
       title:
         "<a:gvcsunspin:1527220557890850846> Income Collected <a:gvcsunspin:1527220557890850846>",
-      description: desc
+      description: desc,
       // No color → uses DEFAULT_COLOR (0xFFAD65)
     });
 
     // Add avatar thumbnail properly
     embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
 
-    return interaction.editReply({ embeds: [embed], files });
+    return interaction.editReply({ embeds: [embed] });
   },
 };
