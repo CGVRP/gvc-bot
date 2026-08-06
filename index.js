@@ -255,10 +255,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // PAYFINE SELECT MENU HANDLER
     if (interaction.isStringSelectMenu()) {
       if (interaction.customId === "payfine_select") {
-        // Prevent paying someone else's fines
-        const profileOwnerId =
-          interaction.message.interaction.customId.split("_")[1];
-        if (interaction.user.id !== profileOwnerId) {
+        // Safely get the profile owner ID
+        let profileOwnerId = null;
+        if (interaction.message.interaction?.customId) {
+          profileOwnerId =
+            interaction.message.interaction.customId.split("_")[1];
+        }
+
+        // Ownership check
+        if (profileOwnerId && interaction.user.id !== profileOwnerId) {
           return interaction.reply({
             content: "❌ You can only pay your own fines.",
             ephemeral: true,
@@ -267,7 +272,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         const caseNumber = interaction.values[0];
         const userId = interaction.user.id;
-
         const userRecord = await getUserRecord(userId);
         const citation = userRecord.records?.citations?.find(
           (c) => c.case === caseNumber,
@@ -280,19 +284,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
           });
         }
 
-        if (userRecord.cash < citation.price) {
+        // 💰 Check both cash and bank
+        const totalFunds = (userRecord.cash ?? 0) + (userRecord.bank ?? 0);
+        if (totalFunds < citation.price) {
           return interaction.reply({
-            content: `❌ You need $${citation.price}, but you only have $${userRecord.cash}.`,
+            content: `❌ You don't have enough money to pay this fine! Please withdraw from your bank first.`,
             ephemeral: true,
           });
         }
 
-        // Deduct money + remove citation
-        userRecord.cash -= citation.price;
+        // Deduct from cash first, then bank if needed
+        let remaining = citation.price;
+        if (userRecord.cash >= remaining) {
+          userRecord.cash -= remaining;
+        } else {
+          remaining -= userRecord.cash;
+          userRecord.cash = 0;
+          userRecord.bank -= remaining;
+        }
+
+        // Remove citation
         userRecord.records.citations = userRecord.records.citations.filter(
           (c) => c.case !== caseNumber,
         );
-
         await updateUserRecord(userRecord);
 
         const { embed } = embedTemplate({
@@ -303,24 +317,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
             `> <:arrowright:1534182706836144158> **Violation:** ${citation.violation}\n` +
             `> <:arrowright:1534182706836144158> **Offense:** ${citation.offense}\n` +
             `> <:arrowright:1534182706836144158> **Amount Paid:** $${citation.price}\n\n` +
-            `> <:arrowright:1534182706836144158> **New Balance:** $${userRecord.cash}`,
+            `> <:arrowright:1534182706836144158> **New Cash:** $${userRecord.cash}\n` +
+            `> <:arrowright:1534182706836144158> **New Bank:** $${userRecord.bank}`,
         });
 
         await interaction.reply({ embeds: [embed], ephemeral: true });
-
-        // DM user
-        try {
-          const { embed: dmEmbed } = embedTemplate({
-            title:
-              "<a:gvcsunspin:1527220557890850846> Fine Payment Receipt <a:gvcsunspin:1527220557890850846>",
-            description:
-              `> <:bulletpoint:1534184707900837961> **Case:** ${citation.case}\n` +
-              `> <:bulletpoint:1534184707900837961> **Amount Paid:** $${citation.price}\n` +
-              `> <:bulletpoint:1534184707900837961> **Remaining Balance:** $${userRecord.cash}`,
-          });
-
-          await interaction.user.send({ embeds: [dmEmbed] });
-        } catch {}
       }
     }
 
