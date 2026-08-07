@@ -122,7 +122,7 @@ function logEvent(
   }
 }
 
-async function sendVehiclePage(interaction, vehicles, page) {
+async function sendVehiclePage(interaction, vehicles, page, targetId) {
   const perPage = 5;
   const totalPages = Math.max(1, Math.ceil(vehicles.length / perPage));
   const start = page * perPage;
@@ -135,12 +135,13 @@ async function sendVehiclePage(interaction, vehicles, page) {
             `> • **${v.year} ${v.make} ${v.model}** (${v.color}) — Plate: ${v.plate}`,
         )
         .join("\n")
-    : `> ${ARROW} No vehicles on this page.`;
+    : `> <:arrowright:1534182706836144158> No vehicles on this page.`;
 
   const { embed } = embedTemplate({
     title: `🚗 Registered Vehicles (Page ${page + 1}/${totalPages})`,
     description: desc,
   });
+
   const targetMember = interaction.guild.members.cache.get(targetId);
   embed.setThumbnail(
     targetMember?.user.displayAvatarURL({ dynamic: true }) ||
@@ -151,14 +152,14 @@ async function sendVehiclePage(interaction, vehicles, page) {
   if (page > 0)
     row.addComponents(
       new ButtonBuilder()
-        .setCustomId(`vehPage_${interaction.user.id}_${page - 1}`)
+        .setCustomId(`vehPage_${interaction.user.id}_${targetId}_${page - 1}`)
         .setLabel("⬅ Previous")
         .setStyle(ButtonStyle.Secondary),
     );
   if (page < totalPages - 1)
     row.addComponents(
       new ButtonBuilder()
-        .setCustomId(`vehPage_${interaction.user.id}_${page + 1}`)
+        .setCustomId(`vehPage_${interaction.user.id}_${targetId}_${page + 1}`)
         .setLabel("Next ➡")
         .setStyle(ButtonStyle.Secondary),
     );
@@ -391,66 +392,79 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ embeds: [embed] });
     }
 
-    // -----------------------------
     // VIEW BALANCE BUTTON
-    // -----------------------------
     if (
       interaction.isButton() &&
       interaction.customId.startsWith("viewBalance_")
     ) {
-      const userId = interaction.customId.split("_")[1];
-      const user = await getUserRecord(userId);
-      const cash = user.cash ?? 0;
-      const bank = user.bank ?? 0;
+      const [, viewerId, targetId] = interaction.customId.split("_");
+      const targetRecord = await getUserRecord(targetId);
+      const cash = targetRecord.cash ?? 0;
+      const bank = targetRecord.bank ?? 0;
 
       const desc =
         `> ${ARROW} **Cash:** $${cash.toLocaleString()}\n` +
         `> ${ARROW} **Bank:** $${bank.toLocaleString()}`;
 
       const { embed } = embedTemplate({
-        title: `${SUN} Balance Overview ${SUN}`,
+        title: `${SUN} ${viewerId === targetId ? "Your" : "Their"} Balance Overview ${SUN}`,
         description: desc,
         noLogo: true,
       });
-      embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
+
+      const targetMember = interaction.guild.members.cache.get(targetId);
+      embed.setThumbnail(
+        targetMember?.user.displayAvatarURL({ dynamic: true }) ||
+          interaction.user.displayAvatarURL({ dynamic: true }),
+      );
 
       return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
-    // -----------------------------
     // VIEW ALL VEHICLES BUTTON
-    // -----------------------------
     if (
       interaction.isButton() &&
       interaction.customId.startsWith("viewVehicles_")
     ) {
-      const userId = interaction.customId.split("_")[1];
-      const userRecord = await getUserRecord(userId);
-      const vehicles = userRecord.vehicles ?? [];
+      const [, viewerId, targetId] = interaction.customId.split("_");
+      const targetRecord = await getUserRecord(targetId);
+      const vehicles = targetRecord.vehicles ?? [];
 
       if (vehicles.length === 0) {
         const { embed } = embedTemplate({
           title: "🚗 Registered Vehicles",
-          description: `> ${ARROW} You have no registered vehicles.`,
+          description: `> <:arrowright:1534182706836144158> ${
+            viewerId === targetId ? "You have" : "They have"
+          } no registered vehicles.`,
           noLogo: true,
         });
+
+        const targetMember = interaction.guild.members.cache.get(targetId);
         embed.setThumbnail(
-          interaction.user.displayAvatarURL({ dynamic: true }),
+          targetMember?.user.displayAvatarURL({ dynamic: true }) ||
+            interaction.user.displayAvatarURL({ dynamic: true }),
         );
+
         return interaction.reply({ embeds: [embed], flags: 64 });
       }
 
-      return sendVehiclePage(interaction, vehicles, 0);
+      return sendVehiclePage(interaction, vehicles, 0, targetId);
     }
 
     // -----------------------------
     // VEHICLE PAGINATION BUTTON
     // -----------------------------
     if (interaction.isButton() && interaction.customId.startsWith("vehPage_")) {
-      const [, userId, pageStr] = interaction.customId.split("_");
-      const userRecord = await getUserRecord(userId);
-      const vehicles = userRecord.vehicles ?? [];
-      return sendVehiclePage(interaction, vehicles, parseInt(pageStr, 10));
+      const [, viewerId, targetId, pageStr] = interaction.customId.split("_");
+      const targetRecord = await getUserRecord(targetId);
+      const vehicles = targetRecord.vehicles ?? [];
+
+      return sendVehiclePage(
+        interaction,
+        vehicles,
+        parseInt(pageStr, 10),
+        targetId,
+      );
     }
 
     // -----------------------------

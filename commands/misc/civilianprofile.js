@@ -25,7 +25,8 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply();
 
-    // If user option is provided → use that
+    const ARROW = "<:arrowright:1534182706836144158>";
+
     const targetUser = interaction.options.getUser("user") || interaction.user;
     const targetMember = interaction.guild.members.cache.get(targetUser.id);
 
@@ -53,7 +54,7 @@ module.exports = {
     }
 
     if (!incomeBreakdown) {
-      incomeBreakdown = "> <:arrowright:1534182706836144158> No income roles.";
+      incomeBreakdown = `> ${ARROW} No income roles.`;
     }
 
     // BADGES
@@ -65,33 +66,33 @@ module.exports = {
     const badgeDisplay =
       badges.length > 0
         ? badges.map((b) => `> • ${b}`).join("\n")
-        : "> <:arrowright:1534182706836144158> No badges earned.";
+        : `> ${ARROW} No badges earned.`;
 
     // DESCRIPTION
     let desc = "";
 
-    desc += `> <:arrowright:1534182706836144158> **Cash:** $${cash}\n`;
-    desc += `> <:arrowright:1534182706836144158> **Bank:** $${bank}\n`;
-    desc += `> <:arrowright:1534182706836144158> **Last Collected:** ${
+    desc += `> ${ARROW} **Cash:** $${cash}\n`;
+    desc += `> ${ARROW} **Bank:** $${bank}\n`;
+    desc += `> ${ARROW} **Last Collected:** ${
       lastCollect ? `<t:${Math.floor(lastCollect / 1000)}:R>` : "Never"
     }\n`;
-    desc += `> <:arrowright:153418270683614415158> **Last Work:** ${
+    desc += `> ${ARROW} **Last Work:** ${
       lastWork ? `<t:${Math.floor(lastWork / 1000)}:R>` : "Never"
     }\n\n`;
 
-    desc += `> <:arrowright:1534182706836144158> **Account Created:** <t:${Math.floor(
+    desc += `> ${ARROW} **Account Created:** <t:${Math.floor(
       targetUser.createdTimestamp / 1000,
     )}:D>\n`;
-    desc += `> <:arrowright:1534182706836144158> **Joined Server:** <t:${Math.floor(
+    desc += `> ${ARROW} **Joined Server:** <t:${Math.floor(
       targetMember.joinedTimestamp / 1000,
     )}:D>\n\n`;
 
-    desc += `> <:arrowright:1534182706836144158> **Role Income:**\n${incomeBreakdown}\n`;
-    desc += `> <:arrowright:1534182706836144158> **Total Role Income:** $${totalRoleIncome}\n\n`;
+    desc += `> ${ARROW} **Role Income:**\n${incomeBreakdown}\n`;
+    desc += `> ${ARROW} **Total Role Income:** $${totalRoleIncome}\n\n`;
 
-    desc += `> <:arrowright:1534182706836144158> **Badges:**\n${badgeDisplay}\n\n`;
+    desc += `> ${ARROW} **Badges:**\n${badgeDisplay}\n\n`;
 
-    desc += `> <:arrowright:1534182706836144158> **Work Messages Loaded:** ${workMessages.length}`;
+    desc += `> ${ARROW} **Work Messages Loaded:** ${workMessages.length}`;
 
     const { embed } = embedTemplate({
       title: `<a:gvcsunspin:1527220557890850846> ${targetUser.username}'s Civilian Profile <a:gvcsunspin:1527220557890850846>`,
@@ -100,7 +101,6 @@ module.exports = {
 
     embed.setThumbnail(targetUser.displayAvatarURL({ dynamic: true }));
 
-    // Buttons include both viewer and target IDs
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`viewVehicles_${interaction.user.id}_${targetUser.id}`)
