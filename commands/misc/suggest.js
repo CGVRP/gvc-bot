@@ -34,7 +34,7 @@ module.exports = {
     const desc =
       `> ${ARROW} **From:** ${user.tag} (${user.id})\n` +
       `> ${ARROW} **Submitted:** <t:${Math.floor(Date.now() / 1000)}:F>\n\n` +
-      `> ${ARROW} **Suggestion:**\n${suggestion}`;
+      `> ${ARROW} **Suggestion:** ${suggestion}`;
 
     const { embed } = embedTemplate({
       title: `${SUN} New Suggestion Submitted ${SUN}`,
@@ -49,7 +49,7 @@ module.exports = {
     const { embed: confirmEmbed } = embedTemplate({
       title: `${SUN} Suggestion Sent ${SUN}`,
       description:
-        `> ${ARROW} Your suggestion has been forwarded to the staff team.\n` +
+        `> ${ARROW} Your suggestion has been forwarded to the suggestion channel.\n` +
         `> ${ARROW} Thank you for helping improve Greenville Community.`,
       noLogo: true,
     });
