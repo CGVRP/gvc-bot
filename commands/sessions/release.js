@@ -90,7 +90,7 @@ module.exports = {
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId("release_link")
+        .setCustomId(`release_link_${encodeURIComponent(link)}`)
         .setLabel("Get Session Link")
         .setStyle(ButtonStyle.Success),
     );

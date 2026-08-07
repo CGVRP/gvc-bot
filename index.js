@@ -47,6 +47,9 @@ const SESSION_COMMANDS = [
   "reinvite",
   "earlyaccess",
   "regen",
+  "aorpchange",
+  "peacetime",
+  "drift",
 ];
 
 const protect = require("./security/protect");
@@ -230,12 +233,39 @@ client.on(Events.InteractionCreate, async (interaction) => {
         `> ${ARROW} **Command:** /${interaction.commandName}\n` +
         (optionsFormatted ? `${optionsFormatted}\n` : "");
 
-      if (isSessionRelated(interaction.commandName))
+      // Include new session-related commands
+      const SESSION_COMMANDS = [
+        "session",
+        "release",
+        "reinvite",
+        "earlyaccess",
+        "regen",
+        "aorpchange",
+        "peacetime",
+        "drift",
+      ];
+
+      if (
+        SESSION_COMMANDS.some((s) =>
+          interaction.commandName.toLowerCase().includes(s),
+        )
+      )
         logChannels = [GENERAL_LOG_CHANNEL, SESSION_LOG_CHANNEL];
     } else if (interaction.isButton()) {
       logTitle = `${SUN} Button Clicked ${SUN}`;
-      extraDetails = `> ${ARROW} **Button ID:** ${interaction.customId}`;
-      if (SESSION_LINK_IDS.includes(interaction.customId))
+
+      let linkInfo = "";
+      if (interaction.customId.startsWith("release_link_")) {
+        const link = decodeURIComponent(
+          interaction.customId.replace("release_link_", ""),
+        );
+        linkInfo = `\n> ${ARROW} **Link:** ${link}`;
+      }
+
+      extraDetails = `> ${ARROW} **Button ID:** ${interaction.customId}${linkInfo}`;
+
+      // Only log session buttons, not all buttons
+      if (interaction.customId.startsWith("release_link"))
         logChannels = [GENERAL_LOG_CHANNEL, SESSION_LOG_CHANNEL];
     } else if (interaction.isAnySelectMenu()) {
       logTitle = `${SUN} Menu Selected ${SUN}`;
@@ -252,15 +282,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
         logChannels = [GENERAL_LOG_CHANNEL, SESSION_LOG_CHANNEL];
     }
 
-    logEvent(client, logChannels, logTitle, interaction, extraDetails);
-
     // -----------------------------
     // CHAT INPUT COMMANDS
     // -----------------------------
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
       if (!command) return;
-      return command.execute(interaction);
+
+      // Execute the command first
+      await command.execute(interaction);
+
+      // Then log it once — prevents duplicate embeds
+      logEvent(client, logChannels, logTitle, interaction, extraDetails);
+      return;
     }
 
     // -----------------------------
@@ -499,7 +533,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ embeds: [embed], flags: 64 });
       }
 
-      const link = interaction.message.sessionLink || "Link unavailable.";
+      const link = decodeURIComponent(
+        interaction.customId.replace("release_link_", ""),
+      );
       const labels = {
         release_link: "Session Link",
         reinvites_link: "Reinvite Link",
