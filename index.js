@@ -141,7 +141,11 @@ async function sendVehiclePage(interaction, vehicles, page) {
     title: `🚗 Registered Vehicles (Page ${page + 1}/${totalPages})`,
     description: desc,
   });
-  embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
+  const targetMember = interaction.guild.members.cache.get(userId);
+  embed.setThumbnail(
+    targetMember?.user.displayAvatarURL({ dynamic: true }) ||
+      interaction.user.displayAvatarURL({ dynamic: true }),
+  );
 
   const row = new ActionRowBuilder();
   if (page > 0)
@@ -303,7 +307,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         : null;
 
       const { embed } = embedTemplate({
-        title: `${SUN} Your Records ${SUN}`,
+        title: `${SUN} ${targetMember?.user.username}'s Records ${SUN}`,
         description: desc,
         noLogo: true,
       });
