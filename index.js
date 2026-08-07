@@ -141,7 +141,7 @@ async function sendVehiclePage(interaction, vehicles, page) {
     title: `🚗 Registered Vehicles (Page ${page + 1}/${totalPages})`,
     description: desc,
   });
-  const targetMember = interaction.guild.members.cache.get(userId);
+  const targetMember = interaction.guild.members.cache.get(targetId);
   embed.setThumbnail(
     targetMember?.user.displayAvatarURL({ dynamic: true }) ||
       interaction.user.displayAvatarURL({ dynamic: true }),
@@ -269,10 +269,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       interaction.isButton() &&
       interaction.customId.startsWith("viewRecords_")
     ) {
-      const userId = interaction.customId.split("_")[1];
-      const userRecord = await getUserRecord(userId);
+      const [, viewerId, targetId] = interaction.customId.split("_");
+      const targetMember = interaction.guild.members.cache.get(targetId);
+      const userRecord = await getUserRecord(targetId);
+
       if (!userRecord.records)
         userRecord.records = { citations: [], warrants: [], blackpoints: 0 };
+
       const { citations, warrants, blackpoints } = userRecord.records;
 
       let desc = `> ${ARROW} **Blackpoints:** ${blackpoints}\n\n`;
@@ -291,27 +294,36 @@ client.on(Events.InteractionCreate, async (interaction) => {
             .join("\n") + "\n\n"
         : "> • None\n\n";
 
-      const options = citations.map((c) => ({
-        label: `${c.case} — $${c.price}`,
-        description: `${c.violation} | ${c.offense}`,
-        value: c.case,
-      }));
+      // Only show fine payment menu if viewer == target
+      const options =
+        viewerId === targetId
+          ? citations.map((c) => ({
+              label: `${c.case} — $${c.price}`,
+              description: `${c.violation} | ${c.offense}`,
+              value: c.case,
+            }))
+          : [];
 
-      const row = options.length
-        ? new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-              .setCustomId(`payfine_select_${userId}`)
-              .setPlaceholder("Select a fine to pay")
-              .addOptions(options),
-          )
-        : null;
+      const row =
+        options.length > 0
+          ? new ActionRowBuilder().addComponents(
+              new StringSelectMenuBuilder()
+                .setCustomId(`payfine_select_${targetId}`)
+                .setPlaceholder("Select a fine to pay")
+                .addOptions(options),
+            )
+          : null;
 
       const { embed } = embedTemplate({
-        title: `${SUN} ${targetMember?.user.username}'s Records ${SUN}`,
+        title: `${SUN} ${viewerId === targetId ? "Your" : `${targetMember?.user.username}'s`} Records ${SUN}`,
         description: desc,
         noLogo: true,
       });
-      embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
+
+      embed.setThumbnail(
+        targetMember?.user.displayAvatarURL({ dynamic: true }) ||
+          interaction.user.displayAvatarURL({ dynamic: true }),
+      );
 
       return interaction.reply({
         embeds: [embed],

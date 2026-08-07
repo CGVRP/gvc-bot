@@ -100,20 +100,20 @@ module.exports = {
 
     embed.setThumbnail(targetUser.displayAvatarURL({ dynamic: true }));
 
-    // Buttons use TARGET USER ID — not the caller’s
+    // Buttons include both viewer and target IDs
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(`viewVehicles_${targetUser.id}`)
+        .setCustomId(`viewVehicles_${interaction.user.id}_${targetUser.id}`)
         .setLabel("View All Vehicles")
         .setStyle(ButtonStyle.Primary),
 
       new ButtonBuilder()
-        .setCustomId(`viewBalance_${targetUser.id}`)
+        .setCustomId(`viewBalance_${interaction.user.id}_${targetUser.id}`)
         .setLabel("View Balance")
         .setStyle(ButtonStyle.Secondary),
 
       new ButtonBuilder()
-        .setCustomId(`viewRecords_${targetUser.id}`)
+        .setCustomId(`viewRecords_${interaction.user.id}_${targetUser.id}`)
         .setLabel("Records")
         .setStyle(ButtonStyle.Danger),
     );
