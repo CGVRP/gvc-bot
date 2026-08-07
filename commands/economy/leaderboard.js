@@ -5,25 +5,42 @@ const { loadEconomy } = require("../../economy/economyutils");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("leaderboard")
-    .setDescription("View the top richest players."),
+    .setDescription("View the top richest players.")
+    .addStringOption((option) =>
+      option
+        .setName("type")
+        .setDescription("Select which balance to rank by (Default: Cash)")
+        .setRequired(false)
+        .addChoices(
+          { name: "Cash", value: "cash" },
+          { name: "Bank", value: "bank" },
+        ),
+    ),
 
   async execute(interaction) {
     await interaction.deferReply();
+
+    const selectedType = interaction.options.getString("type") || "cash";
+    const isBank = selectedType === "bank";
+    const label = isBank ? "Bank" : "Cash";
 
     const economy = await loadEconomy();
 
     if (!economy.length) {
       const { embed } = embedTemplate({
-        title:
-          "<a:gvcsunspin:1527220557890850846> Economy Leaderboard <a:gvcsunspin:1527220557890850846>",
+        title: `<a:gvcsunspin:1527220557890850846> Economy Leaderboard (${label}) <a:gvcsunspin:1527220557890850846>`,
         description:
-          "> <:bulletpoint:1524621721318195230> No economy data found."
+          "> <:bulletpoint:1524621721318195230> No economy data found.",
       });
       return interaction.editReply({ embeds: [embed] });
     }
 
-    // Sort by cash descending (safe default)
-    const sorted = [...economy].sort((a, b) => (b.cash ?? 0) - (a.cash ?? 0));
+    // Sort descending based on selected type
+    const sorted = [...economy].sort((a, b) => {
+      const valA = isBank ? (a.bank ?? 0) : (a.cash ?? 0);
+      const valB = isBank ? (b.bank ?? 0) : (b.cash ?? 0);
+      return valB - valA;
+    });
 
     // Top 10
     const top = sorted.slice(0, 10);
@@ -35,28 +52,26 @@ module.exports = {
       const name = member
         ? member.user.username
         : `Unknown User (${user.userId})`;
+      const amount = isBank ? (user.bank ?? 0) : (user.cash ?? 0);
 
-      desc += `> <:bulletpoint:1534184707900837961> **#${index + 1}** — ${name}: $${user.cash ?? 0}\n`;
+      desc += `> <:bulletpoint:1534184707900837961> **#${index + 1}** — ${name}: $${amount.toLocaleString()}\n`;
     });
 
-    // Your personal rank
+    // Personal rank
     const yourRank =
       sorted.findIndex((u) => u.userId === interaction.user.id) + 1;
 
-    desc += `\n> <:arrowright:1534182706836144158> **Your Rank:** #${yourRank}`;
+    desc += `\n> <:arrowright:1534182706836144158> **Your ${label} Rank:** #${yourRank > 0 ? yourRank : "N/A"}`;
 
     const { embed } = embedTemplate({
-      title:
-        "<a:gvcsunspin:1527220557890850846> Economy Leaderboard <a:gvcsunspin:1527220557890850846>",
-      description: desc
-      // No color → uses DEFAULT_COLOR (0xFFAD65)
+      title: `<a:gvcsunspin:1527220557890850846> Economy Leaderboard (${label}) <a:gvcsunspin:1527220557890850846>`,
+      description: desc,
     });
 
-    // Add server icon thumbnail properly
     embed.setThumbnail(interaction.guild.iconURL({ dynamic: true }));
 
     await interaction.editReply({
-      embeds: [embed]
+      embeds: [embed],
     });
-  }
+  },
 };

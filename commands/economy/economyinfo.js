@@ -18,94 +18,102 @@ module.exports = {
         title:
           "<a:gvcsunspin:1527220557890850846> Economy Statistics <a:gvcsunspin:1527220557890850846>",
         description:
-          "> <:bulletpoint:1534184707900837961> No economy data found."
+          "> <:bulletpoint:1534184707900837961> No economy data found.",
       });
       return interaction.editReply({ embeds: [embed] });
     }
 
-    // Total money
-    const totalMoney = economy.reduce((sum, u) => sum + (u.cash ?? 0), 0);
+    // Helper function to calculate total net worth (Cash + Bank)
+    const getTotal = (u) => (u.cash ?? 0) + (u.bank ?? 0);
 
-    // Average balance
+    // Total money in circulation
+    const totalMoney = economy.reduce((sum, u) => sum + getTotal(u), 0);
+
+    // Average total balance per user
     const avgBalance = Math.round(totalMoney / economy.length);
 
-    // Richest user
+    // Richest user (Net Worth)
     const richest = economy.reduce(
-      (max, u) => ((u.cash ?? 0) > (max.cash ?? 0) ? u : max),
-      economy[0]
+      (max, u) => (getTotal(u) > getTotal(max) ? u : max),
+      economy[0],
     );
     const richestMember = interaction.guild.members.cache.get(richest.userId);
 
-    // Poorest user
+    // Poorest user (Net Worth)
     const poorest = economy.reduce(
-      (min, u) => ((u.cash ?? 0) < (min.cash ?? 0) ? u : min),
-      economy[0]
+      (min, u) => (getTotal(u) < getTotal(min) ? u : min),
+      economy[0],
     );
     const poorestMember = interaction.guild.members.cache.get(poorest.userId);
 
     // Role income stats
-    const roleEntries = Object.entries(roleIncome);
-    const highestIncome = roleEntries.reduce(
-      (max, r) => (r[1] > max[1] ? r : max),
-      roleEntries[0]
-    );
-    const lowestIncome = roleEntries.reduce(
-      (min, r) => (r[1] < min[1] ? r : min),
-      roleEntries[0]
-    );
+    const roleEntries = Object.entries(roleIncome || {});
+    let highestRoleText = "None";
+    let lowestRoleText = "None";
 
-    const highestRole = interaction.guild.roles.cache.get(highestIncome[0]);
-    const lowestRole = interaction.guild.roles.cache.get(lowestIncome[0]);
+    if (roleEntries.length > 0) {
+      const highestIncome = roleEntries.reduce(
+        (max, r) => (r[1] > max[1] ? r : max),
+        roleEntries[0],
+      );
+      const lowestIncome = roleEntries.reduce(
+        (min, r) => (r[1] < min[1] ? r : min),
+        roleEntries[0],
+      );
 
-    // Top 5 richest users
+      const highestRole = interaction.guild.roles.cache.get(highestIncome[0]);
+      const lowestRole = interaction.guild.roles.cache.get(lowestIncome[0]);
+
+      highestRoleText = `${highestRole ? highestRole.name : highestIncome[0]} — $${highestIncome[1].toLocaleString()}`;
+      lowestRoleText = `${lowestRole ? lowestRole.name : lowestIncome[0]} — $${lowestIncome[1].toLocaleString()}`;
+    }
+
+    // Top 5 richest users by total net worth
     const topFive = [...economy]
-      .sort((a, b) => (b.cash ?? 0) - (a.cash ?? 0))
+      .sort((a, b) => getTotal(b) - getTotal(a))
       .slice(0, 5);
 
     let topFiveText = "";
     for (const u of topFive) {
       const member = interaction.guild.members.cache.get(u.userId);
       const name = member ? member.user.username : `Unknown (${u.userId})`;
-      topFiveText += `> • ${name}: $${u.cash}\n`;
+      topFiveText += `> • ${name}: $${getTotal(u).toLocaleString()} ($${(u.cash ?? 0).toLocaleString()} Cash | $${(u.bank ?? 0).toLocaleString()} Bank)\n`;
     }
 
     // Build description
     let desc = "";
 
-    desc += `> <:bulletpoint:1534184707900837961> **Total Money in Circulation:** $${totalMoney}\n`;
+    desc += `> <:bulletpoint:1534184707900837961> **Total Money in Circulation:** $${totalMoney.toLocaleString()}\n`;
     desc += `> <:bulletpoint:1534184707900837961> **Registered Users:** ${economy.length}\n`;
-    desc += `> <:bulletpoint:1534184707900837961> **Average Balance:** $${avgBalance}\n\n`;
+    desc += `> <:bulletpoint:1534184707900837961> **Average Net Worth:** $${avgBalance.toLocaleString()}\n\n`;
 
     desc += `> <:bulletpoint:1534184707900837961> **Richest User:** ${
-      richestMember ? richestMember.user.username : `Unknown (${richest.userId})`
-    } — $${richest.cash}\n`;
+      richestMember
+        ? richestMember.user.username
+        : `Unknown (${richest.userId})`
+    } — $${getTotal(richest).toLocaleString()}\n`;
 
     desc += `> <:bulletpoint:1534184707900837961> **Poorest User:** ${
-      poorestMember ? poorestMember.user.username : `Unknown (${poorest.userId})`
-    } — $${poorest.cash}\n\n`;
+      poorestMember
+        ? poorestMember.user.username
+        : `Unknown (${poorest.userId})`
+    } — $${getTotal(poorest).toLocaleString()}\n\n`;
 
-    desc += `> <:bulletpoint:1534184707900837961> **Highest Role Income:** ${
-      highestRole ? highestRole.name : highestIncome[0]
-    } — $${highestIncome[1]}\n`;
+    desc += `> <:bulletpoint:1534184707900837961> **Highest Role Income:** ${highestRoleText}\n`;
+    desc += `> <:bulletpoint:1534184707900837961> **Lowest Role Income:** ${lowestRoleText}\n\n`;
 
-    desc += `> <:bulletpoint:1534184707900837961> **Lowest Role Income:** ${
-      lowestRole ? lowestRole.name : lowestIncome[0]
-    } — $${lowestIncome[1]}\n\n`;
-
-    desc += `> <:bulletpoint:1534184707900837961> **Top 5 Richest Users:**\n${topFiveText}`;
+    desc += `> <:bulletpoint:1534184707900837961> **Top 5 Richest Users (Net Worth):**\n${topFiveText}`;
 
     const { embed } = embedTemplate({
       title:
         "<a:gvcsunspin:1527220557890850846> Economy Statistics <a:gvcsunspin:1527220557890850846>",
-      description: desc
-      // No color → uses DEFAULT_COLOR (0xFFAD65)
+      description: desc,
     });
 
-    // Add server icon thumbnail properly
     embed.setThumbnail(interaction.guild.iconURL({ dynamic: true }));
 
     await interaction.editReply({
-      embeds: [embed]
+      embeds: [embed],
     });
   },
 };

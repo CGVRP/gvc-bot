@@ -1,32 +1,49 @@
 const { SlashCommandBuilder } = require("discord.js");
 const embedTemplate = require("../../utils/embedTemplate");
-const { getUserRecord, updateUserRecord } = require("../../economy/economyutils");
+const {
+  getUserRecord,
+  updateUserRecord,
+} = require("../../economy/economyutils");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("withdraw")
     .setDescription("Withdraw money from your bank.")
-    .addIntegerOption(option =>
+    .addStringOption((option) =>
       option
         .setName("amount")
-        .setDescription("Amount to withdraw")
-        .setRequired(true)
+        .setDescription("Amount to withdraw or 'all'")
+        .setRequired(true),
     ),
 
   async execute(interaction) {
     await interaction.deferReply();
 
-    const amount = interaction.options.getInteger("amount");
+    const input = interaction.options.getString("amount").trim().toLowerCase();
     const user = await getUserRecord(interaction.user.id);
 
-    if (amount <= 0)
-      return interaction.editReply("❌ Amount must be greater than zero.");
+    let amount = 0;
 
-    if (user.bank < amount)
-      return interaction.editReply("❌ You don't have enough money in your bank.");
+    if (input === "all") {
+      amount = user.bank ?? 0;
+    } else {
+      amount = parseInt(input, 10);
+    }
 
-    user.bank -= amount;
-    user.cash += amount;
+    if (isNaN(amount) || amount <= 0) {
+      return interaction.editReply(
+        "❌ Please provide a valid positive number or type `'all'`.",
+      );
+    }
+
+    if ((user.bank ?? 0) < amount) {
+      return interaction.editReply(
+        "❌ You don't have enough money in your bank.",
+      );
+    }
+
+    user.bank = (user.bank ?? 0) - amount;
+    user.cash = (user.cash ?? 0) + amount;
 
     await updateUserRecord(user);
 
