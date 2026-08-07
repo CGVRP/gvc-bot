@@ -14,30 +14,37 @@ const {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("civilianprofile")
-    .setDescription("View your complete civilian economy profile."),
+    .setDescription("View a civilian's economy profile.")
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription("The user to view (optional)")
+        .setRequired(false),
+    ),
 
   async execute(interaction) {
     await interaction.deferReply();
 
-    const userId = interaction.user.id;
-    const member = interaction.member;
+    // If user option is provided → use that
+    const targetUser = interaction.options.getUser("user") || interaction.user;
+    const targetMember = interaction.guild.members.cache.get(targetUser.id);
 
-    const user = await getUserRecord(userId);
+    const userRecord = await getUserRecord(targetUser.id);
     const roleIncome = await loadRoleIncome();
     const workMessages = await loadWorkMessages();
 
-    const cash = user.cash ?? 0;
-    const bank = user.bank ?? 0;
-    const lastCollect = user.lastCollect ?? 0;
-    const lastWork = user.lastWork ?? 0;
-    const vehicles = user.vehicles ?? [];
+    const cash = userRecord.cash ?? 0;
+    const bank = userRecord.bank ?? 0;
+    const lastCollect = userRecord.lastCollect ?? 0;
+    const lastWork = userRecord.lastWork ?? 0;
+    const vehicles = userRecord.vehicles ?? [];
 
     // ROLE INCOME BREAKDOWN
     let incomeBreakdown = "";
     let totalRoleIncome = 0;
 
     for (const [roleId, amount] of Object.entries(roleIncome)) {
-      if (member.roles.cache.has(roleId)) {
+      if (targetMember.roles.cache.has(roleId)) {
         const role = interaction.guild.roles.cache.get(roleId);
         const roleName = role ? role.name : `Unknown (${roleId})`;
         incomeBreakdown += `> • ${roleName}: $${amount}\n`;
@@ -68,15 +75,15 @@ module.exports = {
     desc += `> <:arrowright:1534182706836144158> **Last Collected:** ${
       lastCollect ? `<t:${Math.floor(lastCollect / 1000)}:R>` : "Never"
     }\n`;
-    desc += `> <:arrowright:1534182706836144158> **Last Work:** ${
+    desc += `> <:arrowright:153418270683614415158> **Last Work:** ${
       lastWork ? `<t:${Math.floor(lastWork / 1000)}:R>` : "Never"
     }\n\n`;
 
     desc += `> <:arrowright:1534182706836144158> **Account Created:** <t:${Math.floor(
-      interaction.user.createdTimestamp / 1000,
+      targetUser.createdTimestamp / 1000,
     )}:D>\n`;
     desc += `> <:arrowright:1534182706836144158> **Joined Server:** <t:${Math.floor(
-      member.joinedTimestamp / 1000,
+      targetMember.joinedTimestamp / 1000,
     )}:D>\n\n`;
 
     desc += `> <:arrowright:1534182706836144158> **Role Income:**\n${incomeBreakdown}\n`;
@@ -87,25 +94,26 @@ module.exports = {
     desc += `> <:arrowright:1534182706836144158> **Work Messages Loaded:** ${workMessages.length}`;
 
     const { embed } = embedTemplate({
-      title: `<a:gvcsunspin:1527220557890850846> ${interaction.user.username}'s Civilian Profile <a:gvcsunspin:1527220557890850846>`,
+      title: `<a:gvcsunspin:1527220557890850846> ${targetUser.username}'s Civilian Profile <a:gvcsunspin:1527220557890850846>`,
       description: desc,
     });
 
-    embed.setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
+    embed.setThumbnail(targetUser.displayAvatarURL({ dynamic: true }));
 
+    // Buttons use TARGET USER ID — not the caller’s
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(`viewVehicles_${userId}`)
+        .setCustomId(`viewVehicles_${targetUser.id}`)
         .setLabel("View All Vehicles")
         .setStyle(ButtonStyle.Primary),
 
       new ButtonBuilder()
-        .setCustomId(`viewBalance_${userId}`)
+        .setCustomId(`viewBalance_${targetUser.id}`)
         .setLabel("View Balance")
         .setStyle(ButtonStyle.Secondary),
 
       new ButtonBuilder()
-        .setCustomId(`viewRecords_${userId}`)
+        .setCustomId(`viewRecords_${targetUser.id}`)
         .setLabel("Records")
         .setStyle(ButtonStyle.Danger),
     );
