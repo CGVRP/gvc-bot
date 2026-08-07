@@ -505,12 +505,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // SESSION LINK BUTTONS (reaction-gated)
     // -----------------------------
     if (
-      (interaction.isButton() &&
-        interaction.customId.startsWith("release_link_")) ||
-      interaction.customId.startsWith("earlyaccess_link_") ||
-      interaction.customId.startsWith("reinvites_link_") ||
-      interaction.customId.startsWith("regen_link_")
+      interaction.isButton() &&
+      (interaction.customId.startsWith("release_link_") ||
+        interaction.customId.startsWith("earlyaccess_link_") ||
+        interaction.customId.startsWith("reinvites_link_") ||
+        interaction.customId.startsWith("regen_link_"))
     ) {
+      await interaction.deferReply({ flags: 64 }); // prevents timeout
+
       const messages = await interaction.channel.messages.fetch({ limit: 50 });
       const startupMessage = messages.find((m) =>
         m.embeds[0]?.title?.includes("Session Startup"),
@@ -533,7 +535,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           description:
             "> You must react to the Startup Embed before accessing the session link.",
         });
-        return interaction.reply({ embeds: [embed], flags: 64 });
+        return interaction.editReply({ embeds: [embed] });
       }
 
       // Extract link based on prefix
@@ -581,7 +583,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         description: `> ${ARROW} Here is your ${linkLabel.toLowerCase()}:\n${link}`,
       });
 
-      return interaction.reply({ embeds: [embed], flags: 64 });
+      return interaction.editReply({ embeds: [embed] });
     }
 
     // Any other/unhandled button (e.g. claim_ticket) falls through harmlessly.

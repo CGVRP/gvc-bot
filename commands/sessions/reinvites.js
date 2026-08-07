@@ -70,7 +70,7 @@ module.exports = {
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId("reinvites_link")
+        .setCustomId(`reinvites_link_${encodeURIComponent(link)}`)
         .setLabel("Get Reinvite Link")
         .setStyle(ButtonStyle.Success),
     );
