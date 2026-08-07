@@ -22,18 +22,14 @@ const embedTemplate = require("./utils/embedTemplate");
 const { getUserRecord, updateUserRecord } = require("./economy/economyutils");
 const handleInbox = require("./utils/inbox");
 
-// -----------------------------------------------------
-// CONFIGURATION SETUP
-// -----------------------------------------------------
-const GENERAL_LOG_CHANNEL = "1534886183040188547"; // Bot logs channel ID
-const SESSION_LOG_CHANNEL = "1534889791416438784"; // Session logs channel ID
-const HR_ROLE_ID = "1350582607217430650"; // HR Role ID to ping
+//Configuration
+const GENERAL_LOG_CHANNEL = "1534886183040188547";
+const SESSION_LOG_CHANNEL = "1534889791416438784";
+const HR_ROLE_ID = "1350582607217430650";
 
-// Custom emoji/style constants (kept centralized so style stays consistent everywhere)
 const SUN = "<a:gvcsunspin:1527220557890850846>";
 const ARROW = "<:arrowright:1534182706836144158>";
 
-// customIds treated as "session link" buttons — only these hit the reaction-gate logic
 const SESSION_LINK_IDS = [
   "release_link",
   "reinvites_link",
@@ -41,7 +37,6 @@ const SESSION_LINK_IDS = [
   "regen_link",
 ];
 
-// Slash command names (or substrings) considered session-related for dual logging
 const SESSION_COMMANDS = [
   "session",
   "release",
@@ -56,11 +51,7 @@ const SESSION_COMMANDS = [
 const protect = require("./security/protect");
 protect.enableGlobalProtection();
 
-// -----------------------------------------------------
-// HELPERS
-// -----------------------------------------------------
-
-// Create/resend recovered log embeds
+//Recovered Embed Helper
 function createRecoveredEmbed(originalEmbed, executor, timestamp) {
   const recoveredEmbed = { ...originalEmbed.data };
   recoveredEmbed.color = parseInt("db2727", 16);
@@ -68,8 +59,7 @@ function createRecoveredEmbed(originalEmbed, executor, timestamp) {
   return recoveredEmbed;
 }
 
-// Recursively flattens subcommand/subcommand-group option trees so every
-// argument (no matter how deeply nested) gets logged.
+//Option Formatting Helpers
 function flattenOptions(options = []) {
   let result = [];
   for (const opt of options) {
@@ -91,7 +81,7 @@ function isSessionRelated(commandName = "") {
   return SESSION_COMMANDS.some((s) => commandName.toLowerCase().includes(s));
 }
 
-// Sends a log embed to one or more channels in the main guild
+//Logging Helper
 function logEvent(
   client,
   channelIds,
@@ -126,6 +116,7 @@ function logEvent(
   }
 }
 
+//Vehicle Page Helper
 async function sendVehiclePage(interaction, vehicles, page, targetId) {
   const perPage = 5;
   const totalPages = Math.max(1, Math.ceil(vehicles.length / perPage));
@@ -175,9 +166,7 @@ async function sendVehiclePage(interaction, vehicles, page, targetId) {
   });
 }
 
-// -----------------------------------------------------
-// CLIENT SETUP
-// -----------------------------------------------------
+//Client Setup
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -185,17 +174,14 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.DirectMessages
+    GatewayIntentBits.DirectMessages,
   ],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
-
 client.commands = new Collection();
 
-// -----------------------------------------------------
-// LOAD COMMANDS
-// -----------------------------------------------------
+//Command Loader
 const foldersPath = path.join(__dirname, "commands");
 for (const folder of fs.readdirSync(foldersPath)) {
   const commandsPath = path.join(foldersPath, folder);
@@ -212,18 +198,13 @@ client.once(Events.ClientReady, () =>
   console.log(`🟢 Bot is online as ${client.user.tag}`),
 );
 
-// -----------------------------------------------------
-// GLOBAL INTERACTION HANDLER
-// -----------------------------------------------------
+//Interaction Handler
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
     let logTitle = `${SUN} Interaction Used ${SUN}`;
     let extraDetails = "";
     let logChannels = [GENERAL_LOG_CHANNEL];
 
-    // -----------------------------
-    // LOGGING (every command/button/menu/modal, every argument)
-    // -----------------------------
     if (interaction.isChatInputCommand()) {
       logTitle = `${SUN} Command Used ${SUN}`;
 
@@ -236,7 +217,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         `> ${ARROW} **Command:** /${interaction.commandName}\n` +
         (optionsFormatted ? `${optionsFormatted}\n` : "");
 
-      // Include new session-related commands
       const SESSION_COMMANDS = [
         "session",
         "release",
@@ -267,7 +247,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       extraDetails = `> ${ARROW} **Button ID:** ${interaction.customId}${linkInfo}`;
 
-      // Only log session buttons, not all buttons
       if (interaction.customId.startsWith("release_link"))
         logChannels = [GENERAL_LOG_CHANNEL, SESSION_LOG_CHANNEL];
     } else if (interaction.isAnySelectMenu()) {
@@ -285,24 +264,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         logChannels = [GENERAL_LOG_CHANNEL, SESSION_LOG_CHANNEL];
     }
 
-    // -----------------------------
-    // CHAT INPUT COMMANDS
-    // -----------------------------
+    //Chat Input Commands
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
       if (!command) return;
 
-      // Execute the command first
       await command.execute(interaction);
-
-      // Then log it once — prevents duplicate embeds
       logEvent(client, logChannels, logTitle, interaction, extraDetails);
       return;
     }
 
-    // -----------------------------
-    // VIEW REGISTRATIONS / RECORDS BUTTON
-    // -----------------------------
+    //Records Handler
     if (
       interaction.isButton() &&
       interaction.customId.startsWith("viewRecords_")
@@ -332,7 +304,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
             .join("\n") + "\n\n"
         : "> • None\n\n";
 
-      // Only show fine payment menu if viewer == target
       const options =
         viewerId === targetId
           ? citations.map((c) => ({
@@ -370,16 +341,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
     }
 
-    // -----------------------------
-    // PAYFINE SELECT MENU HANDLER
-    // -----------------------------
+    //Payfine Handler
     if (
       interaction.isStringSelectMenu() &&
       interaction.customId.startsWith("payfine_select")
     ) {
-      await interaction.deferReply({ flags: 64 }); // ephemeral
+      await interaction.deferReply({ flags: 64 });
 
-      // Ownership check — customId carries the profile owner's ID
       const profileOwnerId = interaction.customId.split("_")[2];
       if (profileOwnerId && interaction.user.id !== profileOwnerId) {
         return interaction.editReply({
@@ -399,7 +367,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const cash = userRecord.cash ?? 0;
 
-      // CASH-ONLY CHECK — now a styled embed matching the arrow/bullet/sun theme
       if (cash < citation.price) {
         const { embed } = embedTemplate({
           title: `${SUN} Insufficient Cash ${SUN}`,
@@ -429,7 +396,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.editReply({ embeds: [embed] });
     }
 
-    // VIEW BALANCE BUTTON
+    //Balance Handler
     if (
       interaction.isButton() &&
       interaction.customId.startsWith("viewBalance_")
@@ -458,7 +425,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
-    // VIEW ALL VEHICLES BUTTON
+    //Vehicle Handler
     if (
       interaction.isButton() &&
       interaction.customId.startsWith("viewVehicles_")
@@ -488,9 +455,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return sendVehiclePage(interaction, vehicles, 0, targetId);
     }
 
-    // -----------------------------
-    // VEHICLE PAGINATION BUTTON
-    // -----------------------------
+    //Vehicle Pagination Handler
     if (interaction.isButton() && interaction.customId.startsWith("vehPage_")) {
       const [, viewerId, targetId, pageStr] = interaction.customId.split("_");
       const targetRecord = await getUserRecord(targetId);
@@ -504,9 +469,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       );
     }
 
-    // -----------------------------
-    // SESSION LINK BUTTONS (reaction-gated)
-    // -----------------------------
+    //Session Link Handler
     if (
       interaction.isButton() &&
       (interaction.customId.startsWith("release_link_") ||
@@ -514,7 +477,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         interaction.customId.startsWith("reinvites_link_") ||
         interaction.customId.startsWith("regen_link_"))
     ) {
-      await interaction.deferReply({ flags: 64 }); // prevents timeout
+      await interaction.deferReply({ flags: 64 });
 
       const messages = await interaction.channel.messages.fetch({ limit: 50 });
       const startupMessage = messages.find((m) =>
@@ -541,7 +504,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.editReply({ embeds: [embed] });
       }
 
-      // Extract link based on prefix
       let link = null;
 
       if (interaction.customId.startsWith("release_link_")) {
@@ -588,8 +550,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       return interaction.editReply({ embeds: [embed] });
     }
-
-    // Any other/unhandled button (e.g. claim_ticket) falls through harmlessly.
   } catch (error) {
     console.error("Interaction error:", error);
     const { embed } = embedTemplate({
@@ -604,13 +564,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
+//Inbox Handler
 client.on(Events.MessageCreate, async (message) => {
   handleInbox(message, client);
 });
 
-// -----------------------------------------------------
-// 🚨 SINGLE MESSAGE DELETE PROTECTION
-// -----------------------------------------------------
+//Message Delete Protection
 client.on(Events.MessageDelete, async (message) => {
   if (
     ![GENERAL_LOG_CHANNEL, SESSION_LOG_CHANNEL].includes(message.channelId) ||
@@ -650,9 +609,7 @@ client.on(Events.MessageDelete, async (message) => {
   }
 });
 
-// -----------------------------------------------------
-// 🚨 BULK MESSAGE DELETE PROTECTION
-// -----------------------------------------------------
+//Bulk Delete Protection
 client.on(Events.MessageDeleteBulk, async (messages) => {
   const firstMsg = messages.first();
   if (
@@ -692,7 +649,5 @@ client.on(Events.MessageDeleteBulk, async (messages) => {
   }
 });
 
-// -----------------------------------------------------
-// LOGIN
-// -----------------------------------------------------
+//Login
 client.login(process.env.TOKEN);
