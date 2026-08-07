@@ -55,7 +55,7 @@ module.exports = {
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId("earlyaccess_link")
+        .setCustomId(`earlyaccess_link_${encodeURIComponent(link)}`)
         .setLabel("Get Early Access Link")
         .setStyle(ButtonStyle.Success),
     );

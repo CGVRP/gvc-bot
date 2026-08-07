@@ -502,11 +502,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     // -----------------------------
-    // SESSION LINK BUTTONS (reaction-gated) — scoped to real session buttons only
+    // SESSION LINK BUTTONS (reaction-gated)
     // -----------------------------
     if (
-      interaction.isButton() &&
-      SESSION_LINK_IDS.includes(interaction.customId)
+      (interaction.isButton() &&
+        interaction.customId.startsWith("release_link_")) ||
+      interaction.customId.startsWith("earlyaccess_link_") ||
+      interaction.customId.startsWith("reinvites_link_") ||
+      interaction.customId.startsWith("regen_link_")
     ) {
       const messages = await interaction.channel.messages.fetch({ limit: 50 });
       const startupMessage = messages.find((m) =>
@@ -533,21 +536,51 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ embeds: [embed], flags: 64 });
       }
 
-      const link = decodeURIComponent(
-        interaction.customId.replace("release_link_", ""),
-      );
+      // Extract link based on prefix
+      let link = null;
+
+      if (interaction.customId.startsWith("release_link_")) {
+        link = decodeURIComponent(
+          interaction.customId.replace("release_link_", ""),
+        );
+      }
+
+      if (interaction.customId.startsWith("earlyaccess_link_")) {
+        link = decodeURIComponent(
+          interaction.customId.replace("earlyaccess_link_", ""),
+        );
+      }
+
+      if (interaction.customId.startsWith("reinvites_link_")) {
+        link = decodeURIComponent(
+          interaction.customId.replace("reinvites_link_", ""),
+        );
+      }
+
+      if (interaction.customId.startsWith("regen_link_")) {
+        link = decodeURIComponent(
+          interaction.customId.replace("regen_link_", ""),
+        );
+      }
+
       const labels = {
-        release_link: "Session Link",
-        reinvites_link: "Reinvite Link",
-        earlyaccess_link: "Early Access Link",
-        regen_link: "Regenerated Link",
+        release_link_: "Session Link",
+        earlyaccess_link_: "Early Access Link",
+        reinvites_link_: "Reinvite Link",
+        regen_link_: "Regenerated Link",
       };
-      const linkLabel = labels[interaction.customId] || "Link";
+
+      const prefix = Object.keys(labels).find((p) =>
+        interaction.customId.startsWith(p),
+      );
+
+      const linkLabel = labels[prefix] || "Link";
 
       const { embed } = embedTemplate({
         title: `${SUN} ${linkLabel} ${SUN}`,
         description: `> ${ARROW} Here is your ${linkLabel.toLowerCase()}:\n${link}`,
       });
+
       return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
