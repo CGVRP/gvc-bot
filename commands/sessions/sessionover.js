@@ -129,7 +129,7 @@ module.exports = {
 
     // SESSION LOGGING
     const sessionLogChannel = interaction.guild.channels.cache.get(
-      "1362152050183635055",
+      "1534889791416438784",
     );
 
     if (sessionLogChannel) {
