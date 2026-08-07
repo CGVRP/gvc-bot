@@ -11,7 +11,7 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    const allowedRole = "1350582607217430650"; // Bot Manager role
+    const allowedRole = "1350582607217430650"; // Bot Developer role
 
     // Permission check
     if (!interaction.member.roles.cache.has(allowedRole)) {

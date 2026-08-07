@@ -20,6 +20,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const embedTemplate = require("./utils/embedTemplate");
 const { getUserRecord, updateUserRecord } = require("./economy/economyutils");
+const handleInbox = require("./utils/inbox");
 
 // -----------------------------------------------------
 // CONFIGURATION SETUP
@@ -599,6 +600,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.reply({ embeds: [embed], flags: 64 });
     }
   }
+});
+
+client.on(Events.MessageCreate, async (message) => {
+  handleInbox(message, client);
 });
 
 // -----------------------------------------------------
