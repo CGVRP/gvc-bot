@@ -704,7 +704,7 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
     if (!member || member.user.bot) return;
 
     const SUPPORTER_ROLE = "1472134913397493813";
-    const SUPPORTER_CHANNEL = "1058642108900184074";
+    const SUPPORTER_CHANNEL = "1535712779623993384";
 
     // Get current custom status text
     const newStatus =
@@ -721,7 +721,7 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
     // Update cache
     supporterStatusCache.set(member.id, hasGVC);
 
-    // Added /gvc → give role + send embed
+    // Added /gvc → give role + send embed (only if they didn't already have it)
     if (hasGVC && !hasRole) {
       await member.roles.add(SUPPORTER_ROLE).catch(() => {});
 
@@ -744,6 +744,9 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
       await member.roles.remove(SUPPORTER_ROLE).catch(() => {});
       return;
     }
+
+    // If they already have the role and still have /gvc, do nothing
+    if (hasGVC && hasRole) return;
   } catch (err) {
     console.error("Supporter status handler error:", err);
   }
