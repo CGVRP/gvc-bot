@@ -40,7 +40,6 @@ module.exports = {
     const lastWork = userRecord.lastWork ?? 0;
     const vehicles = userRecord.vehicles ?? [];
 
-    // ROLE INCOME BREAKDOWN
     let incomeBreakdown = "";
     let totalRoleIncome = 0;
 
@@ -57,18 +56,6 @@ module.exports = {
       incomeBreakdown = `> ${ARROW} No income roles.`;
     }
 
-    // BADGES
-    const badges = [];
-    if (cash >= 100000) badges.push("💰 High Roller");
-    if (vehicles.length >= 5) badges.push("🚗 Collector");
-    if (totalRoleIncome >= 1000) badges.push("🏅 Top Earner");
-
-    const badgeDisplay =
-      badges.length > 0
-        ? badges.map((b) => `> • ${b}`).join("\n")
-        : `> ${ARROW} No badges earned.`;
-
-    // DESCRIPTION
     let desc = "";
 
     desc += `> ${ARROW} **Cash:** $${cash}\n`;
@@ -89,8 +76,6 @@ module.exports = {
 
     desc += `> ${ARROW} **Role Income:**\n${incomeBreakdown}\n`;
     desc += `> ${ARROW} **Total Role Income:** $${totalRoleIncome}\n\n`;
-
-    desc += `> ${ARROW} **Badges:**\n${badgeDisplay}\n\n`;
 
     desc += `> ${ARROW} **Work Messages Loaded:** ${workMessages.length}`;
 
