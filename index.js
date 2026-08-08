@@ -779,22 +779,24 @@ setInterval(async () => {
       }
     });
 
-    // Build log embed (always send)
+    // Build log embed (only counts, no user mentions)
+    const upgradedCount = upgraded.length;
+    const downgradedCount = downgraded.length;
+
     const { embed } = embedTemplate({
       title:
         "<a:gvcsunspin:1527220557890850846> Auto Role Update <a:gvcsunspin:1527220557890850846>",
       description:
         `> <:arrowright:1534182706836144158> **Timestamp:** <t:${Math.floor(Date.now() / 1000)}:F>\n\n` +
-        `> <:arrowright:1534182706836144158> **Upgraded to Civilian:**\n` +
-        (upgraded.length
-          ? upgraded.map((u) => `> • ${u}`).join("\n")
-          : "> • None") +
-        `\n\n> <:arrowright:1534182706836144158> **Assigned Applicant:**\n` +
-        (downgraded.length
-          ? downgraded.map((u) => `> • ${u}`).join("\n")
-          : "> • None"),
+        `> <:arrowright:1534182706836144158> **Upgraded to Civilian:** ${upgradedCount}\n` +
+        `> <:arrowright:1534182706836144158> **Assigned Applicant:** ${downgradedCount}`,
       noLogo: false,
     });
+
+    const logChannel = guild.channels.cache.get(LOG_CHANNEL);
+    if (logChannel) {
+      logChannel.send({ embeds: [embed] }).catch(() => {});
+    }
 
     const logChannel = guild.channels.cache.get(LOG_CHANNEL);
     if (logChannel) {
