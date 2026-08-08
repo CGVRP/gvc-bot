@@ -649,5 +649,45 @@ client.on(Events.MessageDeleteBulk, async (messages) => {
   }
 });
 
+// Reaction Goal Handler
+client.on(Events.MessageReactionAdd, async (reaction, user) => {
+  try {
+    // Ignore bot reactions
+    if (user.bot) return;
+
+    const message = reaction.message;
+
+    // Only track startup embeds
+    if (!message.embeds.length) return;
+    const embed = message.embeds[0];
+
+    if (!embed.title || !embed.title.includes("Session Startup")) return;
+
+    // Extract required reactions from embed description
+    const match = embed.description.match(/Required reactions:\s\*\*(\d+)\*\*/);
+    if (!match) return;
+
+    const required = parseInt(match[1], 10);
+
+    // Count reactions
+    const reactionCount = reaction.count;
+
+    // If goal met, send message
+    if (reactionCount >= required) {
+      const host = embed.description.match(/<@!?(\d+)>/);
+      const hostId = host ? host[1] : null;
+
+      const notifyChannel = reaction.message.guild.channels.cache.get(
+        "1495828191300948111",
+      );
+      if (!notifyChannel) return;
+
+      await notifyChannel.send(`<@${hostId}> Your session is ready to start!`);
+    }
+  } catch (err) {
+    console.error("Reaction goal handler error:", err);
+  }
+});
+
 //Login
 client.login(process.env.TOKEN);

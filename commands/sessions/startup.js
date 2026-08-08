@@ -7,13 +7,16 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("startup")
     .setDescription("Send the startup session embed")
-    .addIntegerOption(option =>
-      option.setName("reactions")
+    .addIntegerOption((option) =>
+      option
+        .setName("reactions")
         .setDescription("Number of reactions needed")
-        .setRequired(true)
+        .setRequired(true),
     ),
 
   async execute(interaction) {
+    // Prevent logging duplication in index.js
+    interaction.noLog = true;
 
     if (!protect.applyRateLimit(interaction.user.id)) {
       return interaction.reply({ content: "Slow down.", flags: 64 });
@@ -23,7 +26,7 @@ module.exports = {
     if (!interaction.member.roles.cache.has(staffRoleId)) {
       return interaction.reply({
         content: "You do not have permission to use this command.",
-        flags: 64
+        flags: 64,
       });
     }
 
@@ -33,24 +36,27 @@ module.exports = {
     await interaction.deferReply({ flags: 64 });
 
     const { embed, files } = embedTemplate({
-      title: "<a:gvcsunspin:1527220557890850846> Greenville Community - *__Session Startup__* <a:gvcsunspin:1527220557890850846>",
+      title:
+        "<a:gvcsunspin:1527220557890850846> Greenville Community - *__Session Startup__* <a:gvcsunspin:1527220557890850846>",
       description:
         `> <:arrowright:1534182706836144158> ${host} is hosting a session.\n\n` +
         `**Startup Information**\n` +
         `> <:arrowright:1534182706836144158> If the reaction requirement is not met within 20 minutes, the session will be cancelled.\n` +
         `> <:arrowright:1534182706836144158> Required reactions: **${reactionsNeeded}**`,
-      banner: path.join(__dirname, "../../graphics/gvcstartup.png")
+      banner: path.join(__dirname, "../../graphics/gvcstartup.png"),
     });
 
     const sent = await interaction.channel.send({
       content: "@everyone",
       embeds: [embed],
       files,
-      allowedMentions: { parse: ["everyone"] }
+      allowedMentions: { parse: ["everyone"] },
     });
 
     await sent.react("<:orangecheck:1518181035534188604>");
 
-    await interaction.editReply({ content: "Startup embed sent successfully." });
-  }
+    await interaction.editReply({
+      content: "Startup embed sent successfully.",
+    });
+  },
 };
