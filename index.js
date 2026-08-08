@@ -175,9 +175,11 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.GuildPresences
   ],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
+
 
 client.commands = new Collection();
 
