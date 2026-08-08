@@ -755,7 +755,7 @@ setInterval(async () => {
     let upgradedCount = 0;
     let applicantCount = 0;
 
-    await guild.members.fetch(); // ensure full list
+    await guild.members.fetch();
 
     guild.members.cache.forEach((member) => {
       if (member.user.bot) return;
@@ -766,29 +766,66 @@ setInterval(async () => {
       const hasUnverified = member.roles.cache.has(UNVERIFIED);
       const hasApplicant = member.roles.cache.has(APPLICANT);
 
-      // RULE 1: Verified → Civilian
+      //
+      // RULE 1: Civilian + Unverified → Give Verified, Remove Unverified
+      //
+      if (hasCivilian && hasUnverified) {
+        if (!hasVerified) {
+          member.roles.add(VERIFIED).catch(() => {});
+          upgradedCount++;
+        }
+        member.roles.remove(UNVERIFIED).catch(() => {});
+        return;
+      }
+
+      //
+      // RULE 2: Unverified + Applicant → GOOD (do nothing)
+      //
+      if (hasUnverified && hasApplicant) {
+        return;
+      }
+
+      //
+      // RULE 3: Unverified + Verified → Remove Verified, Remove Civilian, Give Applicant
+      //
+      if (hasUnverified && hasVerified) {
+        member.roles.remove(VERIFIED).catch(() => {});
+        if (hasCivilian) member.roles.remove(CIVILIAN).catch(() => {});
+        if (!hasApplicant) {
+          member.roles.add(APPLICANT).catch(() => {});
+          applicantCount++;
+        }
+        return;
+      }
+
+      //
+      // RULE 4: Applicant + Civilian → Remove Verified, Remove Civilian, Give Applicant
+      //
+      if (hasApplicant && hasCivilian) {
+        if (hasVerified) member.roles.remove(VERIFIED).catch(() => {});
+        member.roles.remove(CIVILIAN).catch(() => {});
+        // Applicant already present
+        return;
+      }
+
+      //
+      // BASIC RULES
+      //
+
+      // Verified → Civilian
       if (hasVerified && !hasCivilian) {
         member.roles.add(CIVILIAN).catch(() => {});
         upgradedCount++;
       }
 
-      // RULE 2: Unverified → Applicant
+      // Unverified → Applicant
       if (hasUnverified && !hasApplicant) {
         member.roles.add(APPLICANT).catch(() => {});
         applicantCount++;
       }
-
-      // RULE 3: If they have Civilian AND Unverified → remove Civilian, give Applicant
-      if (hasCivilian && hasUnverified) {
-        member.roles.remove(CIVILIAN).catch(() => {});
-        if (!hasApplicant) {
-          member.roles.add(APPLICANT).catch(() => {});
-        }
-        applicantCount++;
-      }
     });
 
-    // Build log embed (only counts)
+    // Log counts only
     const { embed } = embedTemplate({
       title:
         "<a:gvcsunspin:1527220557890850846> Auto Role Update <a:gvcsunspin:1527220557890850846>",
@@ -806,7 +843,7 @@ setInterval(async () => {
   } catch (err) {
     console.error("Auto upgrade error:", err);
   }
-}, 30000); // 30 seconds
+}, 30000);
 
 //Login
 client.login(process.env.TOKEN);
