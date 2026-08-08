@@ -13,7 +13,7 @@ const {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("civilianprofile")
+    .setName("profile")
     .setDescription("View a civilian's economy profile.")
     .addUserOption((option) =>
       option
@@ -80,7 +80,7 @@ module.exports = {
     desc += `> ${ARROW} **Work Messages Loaded:** ${workMessages.length}`;
 
     const { embed } = embedTemplate({
-      title: `<a:gvcsunspin:1527220557890850846> ${targetUser.username}'s Civilian Profile <a:gvcsunspin:1527220557890850846>`,
+      title: `<a:gvcsunspin:1527220557890850846> ${targetUser.username}'s Profile <a:gvcsunspin:1527220557890850846>`,
       description: desc,
     });
 
