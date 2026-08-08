@@ -22,6 +22,7 @@ const embedTemplate = require("./utils/embedTemplate");
 const { getUserRecord, updateUserRecord } = require("./economy/economyutils");
 const handleInbox = require("./utils/inbox");
 const applyRoleLogic = require("./utils/roleLogic");
+const roleCooldown = new Map();
 
 //Configuration
 const GENERAL_LOG_CHANNEL = "1534886183040188547";
@@ -739,81 +740,33 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
   }
 });
 
-async function applyRoleLogic(member) {
-  const VERIFIED = "1058636430542381137";
-  const CIVILIAN = "1058636416164315147";
-
-  const UNVERIFIED = "1350567722655678528";
-  const APPLICANT = "1058636421830824026";
-
-  const hasVerified = member.roles.cache.has(VERIFIED);
-  const hasCivilian = member.roles.cache.has(CIVILIAN);
-
-  const hasUnverified = member.roles.cache.has(UNVERIFIED);
-  const hasApplicant = member.roles.cache.has(APPLICANT);
-
-  //
-  // RULE 1: Civilian + Unverified → Give Verified, Remove Unverified
-  //
-  if (hasCivilian && hasUnverified) {
-    if (!hasVerified) await member.roles.add(VERIFIED).catch(() => {});
-    await member.roles.remove(UNVERIFIED).catch(() => {});
-    return "verified_pair";
-  }
-
-  //
-  // RULE 2: Unverified + Applicant → OK
-  //
-  if (hasUnverified && hasApplicant) {
-    return "unverified_pair";
-  }
-
-  //
-  // RULE 3: Unverified + Verified → Remove Verified, Remove Civilian, Give Applicant
-  //
-  if (hasUnverified && hasVerified) {
-    await member.roles.remove(VERIFIED).catch(() => {});
-    if (hasCivilian) await member.roles.remove(CIVILIAN).catch(() => {});
-    if (!hasApplicant) await member.roles.add(APPLICANT).catch(() => {});
-    return "fixed_unverified";
-  }
-
-  //
-  // RULE 4: Applicant + Civilian → Remove Verified, Remove Civilian, Give Applicant
-  //
-  if (hasApplicant && hasCivilian) {
-    if (hasVerified) await member.roles.remove(VERIFIED).catch(() => {});
-    await member.roles.remove(CIVILIAN).catch(() => {});
-    return "fixed_applicant";
-  }
-
-  //
-  // BASIC RULES
-  //
-
-  // Verified → Civilian
-  if (hasVerified && !hasCivilian) {
-    await member.roles.add(CIVILIAN).catch(() => {});
-    return "added_civilian";
-  }
-
-  // Unverified → Applicant
-  if (hasUnverified && !hasApplicant) {
-    await member.roles.add(APPLICANT).catch(() => {});
-    return "added_applicant";
-  }
-
-  return null;
-}
-
 // Trigger when someone joins
 client.on("guildMemberAdd", async (member) => {
+  const now = Date.now();
+
+  if (roleCooldown.has(member.id) && now - roleCooldown.get(member.id) < 3000) {
+    return; // ignore duplicate events within 3 seconds
+  }
+
+  roleCooldown.set(member.id, now);
+
   const result = await applyRoleLogic(member);
   console.log(`Auto-role join: ${member.user.tag} → ${result}`);
 });
 
 // Trigger when someone’s roles change
 client.on("guildMemberUpdate", async (oldMember, newMember) => {
+  const now = Date.now();
+
+  if (
+    roleCooldown.has(newMember.id) &&
+    now - roleCooldown.get(newMember.id) < 3000
+  ) {
+    return; // ignore duplicate events within 3 seconds
+  }
+
+  roleCooldown.set(newMember.id, now);
+
   const result = await applyRoleLogic(newMember);
   console.log(`Auto-role update: ${newMember.user.tag} → ${result}`);
 });
