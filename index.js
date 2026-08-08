@@ -704,7 +704,7 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
     if (!member || member.user.bot) return;
 
     const SUPPORTER_ROLE = "1472134913397493813";
-    const SUPPORTER_CHANNEL = "1535712779623993384";
+    const SUPPORTER_CHANNEL = "1058642108900184074";
 
     // Get current custom status text
     const newStatus =
