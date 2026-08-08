@@ -175,11 +175,10 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.GuildPresences
+    GatewayIntentBits.GuildPresences,
   ],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
-
 
 client.commands = new Collection();
 
@@ -739,7 +738,7 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
   }
 });
 
-// Auto Upgrade System (runs every 60 seconds)
+// Auto Upgrade System (runs every 30 seconds)
 setInterval(async () => {
   try {
     const guild = client.guilds.cache.get("1058305800252182528");
@@ -758,8 +757,7 @@ setInterval(async () => {
 
     await guild.members.fetch(); // ensure full member list
 
-    guild.members.cache.forEach(member => {
-      // Skip bots
+    guild.members.cache.forEach((member) => {
       if (member.user.bot) return;
 
       const hasVerified = member.roles.cache.has(VERIFIED);
@@ -781,31 +779,31 @@ setInterval(async () => {
       }
     });
 
-    // If nothing changed, don't send a log
-    if (upgraded.length === 0 && downgraded.length === 0) return;
-
-    // Build log embed
+    // Build log embed (always send)
     const { embed } = embedTemplate({
-      title: "<a:gvcsunspin:1527220557890850846> Auto Role Update <a:gvcsunspin:1527220557890850846>",
+      title:
+        "<a:gvcsunspin:1527220557890850846> Auto Role Update <a:gvcsunspin:1527220557890850846>",
       description:
-        `> <:arrowright:1534182706836144158> **Timestamp:** <t:${Math.floor(Date.now()/1000)}:F>\n\n` +
+        `> <:arrowright:1534182706836144158> **Timestamp:** <t:${Math.floor(Date.now() / 1000)}:F>\n\n` +
         `> <:arrowright:1534182706836144158> **Upgraded to Civilian:**\n` +
-        (upgraded.length ? upgraded.map(u => `> • ${u}`).join("\n") : "> • None") +
-        `\n\n> <:arrowright:1534182706836144158> **Assigned Restricted:**\n` +
-        (downgraded.length ? downgraded.map(u => `> • ${u}`).join("\n") : "> • None"),
-      noLogo: false
+        (upgraded.length
+          ? upgraded.map((u) => `> • ${u}`).join("\n")
+          : "> • None") +
+        `\n\n> <:arrowright:1534182706836144158> **Assigned Applicant:**\n` +
+        (downgraded.length
+          ? downgraded.map((u) => `> • ${u}`).join("\n")
+          : "> • None"),
+      noLogo: false,
     });
 
     const logChannel = guild.channels.cache.get(LOG_CHANNEL);
     if (logChannel) {
       logChannel.send({ embeds: [embed] }).catch(() => {});
     }
-
   } catch (err) {
     console.error("Auto upgrade error:", err);
   }
-}, 60000); // 60 seconds
-
+}, 30000); // 30 seconds
 
 //Login
 client.login(process.env.TOKEN);
