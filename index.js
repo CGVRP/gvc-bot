@@ -21,6 +21,7 @@ const path = require("node:path");
 const embedTemplate = require("./utils/embedTemplate");
 const { getUserRecord, updateUserRecord } = require("./economy/economyutils");
 const handleInbox = require("./utils/inbox");
+const applyRoleLogic = require("./utils/roleLogic");
 
 //Configuration
 const GENERAL_LOG_CHANNEL = "1534886183040188547";

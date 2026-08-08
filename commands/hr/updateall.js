@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const embedTemplate = require("../../utils/embedTemplate");
+const applyRoleLogic = require("../../utils/roleLogic");
 
 module.exports = {
   data: new SlashCommandBuilder()
