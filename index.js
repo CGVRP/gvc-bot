@@ -752,10 +752,10 @@ setInterval(async () => {
 
     const LOG_CHANNEL = "1534886183040188547";
 
-    const upgraded = [];
-    const downgraded = [];
+    let upgradedCount = 0;
+    let applicantCount = 0;
 
-    await guild.members.fetch(); // ensure full member list
+    await guild.members.fetch(); // ensure full list
 
     guild.members.cache.forEach((member) => {
       if (member.user.bot) return;
@@ -766,41 +766,42 @@ setInterval(async () => {
       const hasUnverified = member.roles.cache.has(UNVERIFIED);
       const hasApplicant = member.roles.cache.has(APPLICANT);
 
-      // Verified → Civilian
+      // RULE 1: Verified → Civilian
       if (hasVerified && !hasCivilian) {
         member.roles.add(CIVILIAN).catch(() => {});
-        upgraded.push(member.user);
+        upgradedCount++;
       }
 
-      // Unverified → Applicant
+      // RULE 2: Unverified → Applicant
       if (hasUnverified && !hasApplicant) {
         member.roles.add(APPLICANT).catch(() => {});
-        downgraded.push(member.user);
+        applicantCount++;
+      }
+
+      // RULE 3: If they have Civilian AND Unverified → remove Civilian, give Applicant
+      if (hasCivilian && hasUnverified) {
+        member.roles.remove(CIVILIAN).catch(() => {});
+        if (!hasApplicant) {
+          member.roles.add(APPLICANT).catch(() => {});
+        }
+        applicantCount++;
       }
     });
 
-    // Build log embed (only counts, no user mentions)
-    const upgradedCount = upgraded.length;
-    const downgradedCount = downgraded.length;
-
+    // Build log embed (only counts)
     const { embed } = embedTemplate({
       title:
         "<a:gvcsunspin:1527220557890850846> Auto Role Update <a:gvcsunspin:1527220557890850846>",
       description:
         `> <:arrowright:1534182706836144158> **Timestamp:** <t:${Math.floor(Date.now() / 1000)}:F>\n\n` +
         `> <:arrowright:1534182706836144158> **Upgraded to Civilian:** ${upgradedCount}\n` +
-        `> <:arrowright:1534182706836144158> **Assigned Applicant:** ${downgradedCount}`,
+        `> <:arrowright:1534182706836144158> **Assigned Applicant:** ${applicantCount}`,
       noLogo: false,
     });
 
-    const logChannel = guild.channels.cache.get(LOG_CHANNEL);
-    if (logChannel) {
-      logChannel.send({ embeds: [embed] }).catch(() => {});
-    }
-
-    const logChannel = guild.channels.cache.get(LOG_CHANNEL);
-    if (logChannel) {
-      logChannel.send({ embeds: [embed] }).catch(() => {});
+    const autoLogChannel = guild.channels.cache.get(LOG_CHANNEL);
+    if (autoLogChannel) {
+      autoLogChannel.send({ embeds: [embed] }).catch(() => {});
     }
   } catch (err) {
     console.error("Auto upgrade error:", err);
