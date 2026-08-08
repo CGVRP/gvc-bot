@@ -674,6 +674,10 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 
     // If goal met, send message
     if (reactionCount >= required) {
+      // Prevent duplicate notifications
+      if (reaction.message.hasSentReady) return;
+      reaction.message.hasSentReady = true;
+
       const host = embed.description.match(/<@!?(\d+)>/);
       const hostId = host ? host[1] : null;
 
@@ -688,6 +692,52 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
     console.error("Reaction goal handler error:", err);
   }
 });
+
+// Supporter Status Handler
+client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
+  try {
+    const member = newPresence?.member;
+    if (!member || member.user.bot) return;
+
+    const SUPPORTER_ROLE = "1472134913397493813";
+    const SUPPORTER_CHANNEL = "1058642108900184074";
+
+    // Read status text (Discord calls it "state")
+    const status = newPresence.activities?.find(a => a.state)?.state || "";
+    const hasGVC = status.toLowerCase().includes("/gvc");
+
+    const hasRole = member.roles.cache.has(SUPPORTER_ROLE);
+
+    // If they added /gvc and don't have the role yet
+    if (hasGVC && !hasRole) {
+      await member.roles.add(SUPPORTER_ROLE).catch(() => {});
+
+      // Build supporter embed using your supporter.js utility
+      const supporterEmbed = require("./utils/supporter");
+      const { embed, files } = supporterEmbed({
+        user: member.user,
+        banner: path.join(__dirname, "./graphics/gvcsupporter.png")
+      });
+
+      const channel = member.guild.channels.cache.get(SUPPORTER_CHANNEL);
+      if (channel) {
+        await channel.send({ embeds: [embed], files });
+      }
+
+      return;
+    }
+
+    // If they removed /gvc and still have the role → remove role silently
+    if (!hasGVC && hasRole) {
+      await member.roles.remove(SUPPORTER_ROLE).catch(() => {});
+      return;
+    }
+
+  } catch (err) {
+    console.error("Supporter status handler error:", err);
+  }
+});
+
 
 //Login
 client.login(process.env.TOKEN);
