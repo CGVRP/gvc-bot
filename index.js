@@ -702,10 +702,10 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
     const SUPPORTER_ROLE = "1472134913397493813";
     const SUPPORTER_CHANNEL = "1058642108900184074";
 
-    // Read status text (Discord calls it "state")
-    const status = newPresence.activities?.find(a => a.state)?.state || "";
-    const hasGVC = status.toLowerCase().includes("/gvc");
-
+    // Check for custom status
+    const customStatus =
+      newPresence.activities?.find((a) => a.type === 4 && a.state)?.state || "";
+    const hasGVC = customStatus.toLowerCase().includes("/gvc");
     const hasRole = member.roles.cache.has(SUPPORTER_ROLE);
 
     // If they added /gvc and don't have the role yet
@@ -716,7 +716,7 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
       const supporterEmbed = require("./utils/supporter");
       const { embed, files } = supporterEmbed({
         user: member.user,
-        banner: path.join(__dirname, "./graphics/gvcsupporter.png")
+        banner: path.join(__dirname, "./graphics/gvcsupporter.png"),
       });
 
       const channel = member.guild.channels.cache.get(SUPPORTER_CHANNEL);
@@ -732,12 +732,10 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
       await member.roles.remove(SUPPORTER_ROLE).catch(() => {});
       return;
     }
-
   } catch (err) {
     console.error("Supporter status handler error:", err);
   }
 });
-
 
 //Login
 client.login(process.env.TOKEN);
