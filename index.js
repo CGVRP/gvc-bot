@@ -21,8 +21,6 @@ const path = require("node:path");
 const embedTemplate = require("./utils/embedTemplate");
 const { getUserRecord, updateUserRecord } = require("./economy/economyutils");
 const handleInbox = require("./utils/inbox");
-const applyRoleLogic = require("./utils/roleLogic");
-const roleCooldown = new Map();
 
 //Configuration
 const GENERAL_LOG_CHANNEL = "1534886183040188547";
@@ -738,37 +736,6 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
   } catch (err) {
     console.error("Supporter status handler error:", err);
   }
-});
-
-// Trigger when someone joins
-client.on("guildMemberAdd", async (member) => {
-  const now = Date.now();
-
-  if (roleCooldown.has(member.id) && now - roleCooldown.get(member.id) < 3000) {
-    return; // ignore duplicate events within 3 seconds
-  }
-
-  roleCooldown.set(member.id, now);
-
-  const result = await applyRoleLogic(member);
-  console.log(`Auto-role join: ${member.user.tag} → ${result}`);
-});
-
-// Trigger when someone’s roles change
-client.on("guildMemberUpdate", async (oldMember, newMember) => {
-  const now = Date.now();
-
-  if (
-    roleCooldown.has(newMember.id) &&
-    now - roleCooldown.get(newMember.id) < 3000
-  ) {
-    return; // ignore duplicate events within 3 seconds
-  }
-
-  roleCooldown.set(newMember.id, now);
-
-  const result = await applyRoleLogic(newMember);
-  console.log(`Auto-role update: ${newMember.user.tag} → ${result}`);
 });
 
 //Login
