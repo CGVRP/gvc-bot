@@ -694,6 +694,10 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
   }
 });
 
+// Supporter Role
+// Cache to track last known supporter status
+const supporterStatusCache = new Map();
+
 client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
   try {
     const member = newPresence?.member;
@@ -702,19 +706,21 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
     const SUPPORTER_ROLE = "1472134913397493813";
     const SUPPORTER_CHANNEL = "1058642108900184074";
 
-    // Extract old and new custom statuses
-    const oldStatus =
-      oldPresence?.activities?.find((a) => a.type === 4 && a.state)?.state ||
-      "";
+    // Extract new custom status
     const newStatus =
-      newPresence?.activities?.find((a) => a.type === 4 && a.state)?.state ||
-      "";
-
-    // If the custom status didn't change, do nothing
-    if (oldStatus === newStatus) return;
+      newPresence.activities?.find((a) => a.type === 4 && a.state)?.state || "";
 
     const hasGVC = newStatus.toLowerCase().includes("/gvc");
     const hasRole = member.roles.cache.has(SUPPORTER_ROLE);
+
+    // Get last known state
+    const lastState = supporterStatusCache.get(member.id);
+
+    // If state hasn't changed, ignore
+    if (lastState === hasGVC) return;
+
+    // Update cache
+    supporterStatusCache.set(member.id, hasGVC);
 
     // If they added /gvc and don't have the role yet
     if (hasGVC && !hasRole) {
@@ -734,7 +740,7 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
       return;
     }
 
-    // If they removed /gvc and still have the role → remove role silently
+    // If they removed /gvc and still have the role
     if (!hasGVC && hasRole) {
       await member.roles.remove(SUPPORTER_ROLE).catch(() => {});
       return;
