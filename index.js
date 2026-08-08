@@ -694,7 +694,6 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
   }
 });
 
-// Supporter Status Handler
 client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
   try {
     const member = newPresence?.member;
@@ -703,17 +702,24 @@ client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
     const SUPPORTER_ROLE = "1472134913397493813";
     const SUPPORTER_CHANNEL = "1058642108900184074";
 
-    // Check for custom status
-    const customStatus =
-      newPresence.activities?.find((a) => a.type === 4 && a.state)?.state || "";
-    const hasGVC = customStatus.toLowerCase().includes("/gvc");
+    // Extract old and new custom statuses
+    const oldStatus =
+      oldPresence?.activities?.find((a) => a.type === 4 && a.state)?.state ||
+      "";
+    const newStatus =
+      newPresence?.activities?.find((a) => a.type === 4 && a.state)?.state ||
+      "";
+
+    // If the custom status didn't change, do nothing
+    if (oldStatus === newStatus) return;
+
+    const hasGVC = newStatus.toLowerCase().includes("/gvc");
     const hasRole = member.roles.cache.has(SUPPORTER_ROLE);
 
     // If they added /gvc and don't have the role yet
     if (hasGVC && !hasRole) {
       await member.roles.add(SUPPORTER_ROLE).catch(() => {});
 
-      // Build supporter embed using your supporter.js utility
       const supporterEmbed = require("./utils/supporter");
       const { embed, files } = supporterEmbed({
         user: member.user,
